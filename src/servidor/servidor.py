@@ -4,6 +4,7 @@ import threading
 from typing import Dict, NamedTuple, Tuple
 
 from src.util.transmissao import Transmissao
+from src.util.mutex import Mutex
 
 
 class LinhaTabelaRegistro(NamedTuple):
@@ -12,14 +13,15 @@ class LinhaTabelaRegistro(NamedTuple):
     porta: str
 
 
-
 class Servidor():
     def __init__(self, endereco, porta) -> None:
         self._endereco = endereco
         self._porta = porta
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._aceitandoConexoes = True
-        self._clientesRegistrados: Dict[str, LinhaTabelaRegistro] = {}
+        # self._clientesRegistrados: Dict[str, LinhaTabelaRegistro] = {}
+        # dados no mutex será a tabela (dicionario)
+        self._clientesRegistrados = Mutex({})
 
     def comecaServir(self) -> None:
         try:
@@ -62,9 +64,10 @@ class Servidor():
 
         # faz o lock na tabela de registro
         # TODO
-        entrada = self._clientesRegistrados.get(nome)
-        if (entrada is not None):
-            _, ip, porta = entrada
+        # with self._clientesRegistrados.lock:
+        #     if nome in self._clientesRegistrados.data:
+        #         pass
+
         # faz o unlock na tabela de registro
         # TODO
         return (encontrou, LinhaTabelaRegistro(nome, ip, porta))
