@@ -12,20 +12,6 @@ class LinhaTabelaRegistro(NamedTuple):
     porta: str
 
 
-class MensagemAplicacao(NamedTuple):
-    cod: str
-    description: str
-
-
-class MensagensAplicacao(Enum):
-    REGISTO = MensagemAplicacao('', '')
-    REGISTO_EXITO = MensagemAplicacao('', '')
-    REGISTO_FALHA = MensagemAplicacao('', '')
-    CONSULTA = MensagemAplicacao('', '')
-    CONSULTA_EXITO = MensagemAplicacao('', '')
-    CONSULTA_FALHA = MensagemAplicacao('', '')
-    ENCERRAMENTO = MensagemAplicacao('', '')
-
 
 class Servidor():
     def __init__(self, endereco, porta) -> None:
