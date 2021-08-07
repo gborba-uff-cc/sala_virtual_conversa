@@ -58,7 +58,7 @@ class Servidor():
             print('processaConexao:finally')
             socketConexao.close()
 
-    def _consultaRegistro(self, nome: str) -> Tuple[bool, LinhaTabelaRegistro]:
+    def consultaRegistro(self, nome: str) -> Tuple[bool, LinhaTabelaRegistro]:
         nome, ip, porta = ('', '', '')
         encontrou = False
 
