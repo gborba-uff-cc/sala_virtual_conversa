@@ -15,14 +15,15 @@ class Cliente():
         self._socketConexao.connect((enderecoServidor, portaServidor))
         self._socketConectado = True
 
-    def fazPedidoRegistro(self, nomeDesejado: str):
-        return ma.fazPedidoRegistro(self._socketConexao, nomeDesejado)
+    def realizaPedidoRegistro(self, nomeDesejado: str):
+        ma.fazPedidoRegistro(self._socketConexao, nomeDesejado)
+        return ma.recebePedidoOuResposta(self._socketConexao)
 
-    def fazPedidoConsulta(self, nomeDesejado: str):
-        return ma.fazPedidoConsulta(self._socketConexao, nomeDesejado)
+    def realizaPedidoConsulta(self, nomeDesejado: str):
+        ma.fazPedidoConsulta(self._socketConexao, nomeDesejado)
+        return ma.recebePedidoOuResposta(self._socketConexao)
 
-    def fazPedidoEncerramento(self):
+    def realizaPedidoEncerramento(self):
         ma.fazPedidoEncerramento(self._socketConexao)
         self._socketConexao.close()
         self._socketConectado = False
-
