@@ -1,4 +1,4 @@
-from src.servidor.servidor import Servidor
+from src.cliente_servidor.servidor import Servidor
 
 
 def main():
