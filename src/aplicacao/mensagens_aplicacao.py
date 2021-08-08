@@ -19,48 +19,58 @@ class MensagensAplicacao(Enum):
     CONSULTA_FALHA = MensagemAplicacao('6', 'CONSULTA MAL-SUCEDIDA')
     ENCERRAMENTO = MensagemAplicacao('7', 'PEDIDO ENCERRAMENTO')
 
+
 def fazPedidoRegistro(sConexao: socket, nomeDesejado: str):
+    """Solicita o registro do nome no servidor"""
+    tipoCabecalho = MensagensAplicacao.REGISTO
+    cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
+    corpo = nomeDesejado
     Transmissao.enviaBytes(
         socket=sConexao,
-        msg=(
-            MensagensAplicacao.REGISTO.value.cod +
-            ' ' +
-            MensagensAplicacao.REGISTO.value.description +
-            '\n' +
-            nomeDesejado).encode('UTF8'))
-    msgBytes = Transmissao.recebeBytes(sConexao)
-    return msgBytes.decode('UTF8')
+        msg=(cabecalho + '\n' + corpo).encode('UTF8'))
 
-# def recebePedidoRegistro(sConexao):
-#     msgBytes = Transmissao.recebeBytes(sConexao)
-#     msgStr = msgBytes.decode('UTF8')
-#     return {'cabecalho': msgStr.partition('\n')[0], 'corpo': msgStr.partition('\n')[-1:]}
+
+def fazRespostaPedidoRegistro(sConexao, registrou: bool):
+    """Responde a solicitação de registro do nome feita pelo cliente"""
+    tipoCabecalho = MensagensAplicacao.REGISTO_EXITO if registrou else MensagensAplicacao.REGISTO_FALHA
+    cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
+    Transmissao.enviaBytes(
+        socket=sConexao,
+        msg=cabecalho.encode('UTF8'))
+
 
 def fazPedidoConsulta(sConexao: socket, nomeDesejado: str):
+    """Solicita a consulta de um nome"""
+    tipoCabecalho = MensagensAplicacao.CONSULTA
+    cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
+    corpo = nomeDesejado
     Transmissao.enviaBytes(
         socket=sConexao,
-        msg=(
-            MensagensAplicacao.CONSULTA.value.cod +
-            ' ' +
-            MensagensAplicacao.CONSULTA.value.description +
-            '\n' +
-            nomeDesejado).encode('UTF8'))
-    msgBytes = Transmissao.recebeBytes(sConexao)
-    return msgBytes.decode('UTF8')
+        msg=(cabecalho + '\n' + corpo).encode('UTF8'))
 
-# def recebePedidoConsulta(sConexao):
-#    pass
+
+def fazRespostaPedidoConsulta(sConexao, encontrou: bool, ip: str = '', porta: str = ''):
+    """Responde a solicitação de consulta ao nome feita pelo cliente"""
+    tipoCabecalho = MensagensAplicacao.CONSULTA_EXITO if encontrou else MensagensAplicacao.CONSULTA_FALHA
+    cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
+    corpo = (ip + ' ' + porta) if encontrou else ''
+    Transmissao.enviaBytes(
+        socket=sConexao,
+        msg=(cabecalho + '\n' + corpo).encode('UTF8'))
+
 
 def fazPedidoEncerramento(sConexao: socket):
+    """Clinte informa que quer encerrar a conexão com o servidor"""
+    tipoCabecalho = MensagensAplicacao.ENCERRAMENTO
+    cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
     Transmissao.enviaBytes(
         socket=sConexao,
-        msg=(
-            MensagensAplicacao.ENCERRAMENTO.value.cod +
-            ' ' +
-            MensagensAplicacao.ENCERRAMENTO.value.description).encode('UTF8'))
+        msg=cabecalho.encode('UTF8'))
 
-# def recebePedidoEncerramento(sConexao):
-#    pass
 
-# TODO - mover parte da lógica da maquinaServidor, que enviam e recebem
-# mensagens, para cá
+def recebePedidoOuResposta(sConexao):
+    """Função padrão para receber o cabeçalho e o corpo de uma transmissão da aplicação"""
+    msgBytes = Transmissao.recebeBytes(sConexao)
+    msgStr = msgBytes.decode('UTF8')
+    cabecalho, _, corpo = msgStr.partition('\n')
+    return (cabecalho, corpo)
