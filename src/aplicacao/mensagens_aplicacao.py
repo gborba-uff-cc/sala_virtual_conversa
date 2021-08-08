@@ -1,22 +1,23 @@
-from socket import socket
-
 from enum import Enum
+from socket import socket
 from typing import NamedTuple
 
 from src.util.transmissao import Transmissao
+
 
 class MensagemAplicacao(NamedTuple):
     cod: str
     description: str
 
+
 class MensagensAplicacao(Enum):
-    REGISTO = MensagemAplicacao('1', '')
-    REGISTO_EXITO = MensagemAplicacao('2', '')
-    REGISTO_FALHA = MensagemAplicacao('3', '')
-    CONSULTA = MensagemAplicacao('4', '')
-    CONSULTA_EXITO = MensagemAplicacao('5', '')
-    CONSULTA_FALHA = MensagemAplicacao('6', '')
-    ENCERRAMENTO = MensagemAplicacao('7', '')
+    REGISTO = MensagemAplicacao('1', 'PEDIDO REGISTRO')
+    REGISTO_EXITO = MensagemAplicacao('2', 'REGISTRO BEM-SUCEDIDO')
+    REGISTO_FALHA = MensagemAplicacao('3', 'REGISTRO MAL-SUCEDIDO')
+    CONSULTA = MensagemAplicacao('4', 'PEDIDO CONSULTA')
+    CONSULTA_EXITO = MensagemAplicacao('5', 'CONSULTA BEM-SUCEDIDA')
+    CONSULTA_FALHA = MensagemAplicacao('6', 'CONSULTA MAL-SUCEDIDA')
+    ENCERRAMENTO = MensagemAplicacao('7', 'PEDIDO ENCERRAMENTO')
 
 def fazPedidoRegistro(sConexao: socket, nomeDesejado: str):
     Transmissao.enviaBytes(
