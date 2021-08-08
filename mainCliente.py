@@ -1,15 +1,14 @@
 import socket
-from src.util.transmissao import Transmissao
+from src.cliente_servidor.cliente import Cliente
 
-SERVIDOR_ENDERECO = 'localhost'
-# SERVIDOR_PORTA    = 49152
-SERVIDOR_PORTA = 5000
+# TODO - endereco deve ser pego pela interface com o usuario
+servidor_endereco = 'localhost'
+servidor_porta = 5000
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((SERVIDOR_ENDERECO, SERVIDOR_PORTA))
-f = 'estou testando envio ]]} com} e ~sem flags e escapes }~'
-print(f)
-Transmissao.enviaBytes(s, f.encode('UTF8'))
-f = Transmissao.recebeBytes(s)
-print(f.decode('UTF8'))
-s.close()
+c = Cliente()
+c.conectaAoServidor(servidor_endereco, servidor_porta)
+strRetornado = c.fazPedidoRegistro('gabrielborba')
+print(strRetornado)
+strRetornado = c.fazPedidoConsulta('gabrielborba')
+print(strRetornado)
+c.fazPedidoEncerramento()
