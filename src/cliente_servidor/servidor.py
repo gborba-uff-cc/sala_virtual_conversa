@@ -106,4 +106,3 @@ class Servidor():
                         nome = v.nome
                         break
                 self._clientesRegistrados.data.pop(nome, None)
-
