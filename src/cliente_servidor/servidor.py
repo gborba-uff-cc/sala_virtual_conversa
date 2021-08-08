@@ -1,12 +1,13 @@
-from enum import Enum
 import socket
 import threading
+from enum import Enum
 from typing import Dict, NamedTuple, Tuple
 
-from src.util.transmissao import Transmissao
-from src.util.mutex import Mutex
-from src.util.gerador_maquinas import geraMaquinaServidor
 from src.util.caixa import Caixa
+from src.util.maquina_servidor import geraMaquinaServidor
+from src.util.mutex import Mutex
+from src.util.transmissao import Transmissao
+
 
 class LinhaTabelaRegistro(NamedTuple):
     nome: str
@@ -20,8 +21,6 @@ class Servidor():
         self._porta = porta
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._aceitandoConexoes = True
-        # self._clientesRegistrados: Dict[str, LinhaTabelaRegistro] = {}
-        # dados no mutex será a tabela (dicionario)
         self._clientesRegistrados = Mutex({})
 
     def comecaServir(self) -> None:
@@ -48,11 +47,6 @@ class Servidor():
 
     def _processaConexao(self, sConexao: socket.socket, endCliente) -> None:
         try:
-            # print(socketConexao, enderecoCliente)
-            # msg = Transmissao.recebeBytes(socketConexao)
-            # print(msg)
-            # msg = msg.decode('UTF8').upper().encode('UTF8')
-            # Transmissao.enviaBytes(socketConexao, msg)
             processador = geraMaquinaServidor()
             processador.executa(
                 maquinaEstados=processador,
@@ -61,7 +55,7 @@ class Servidor():
                 enderecoCliente=endCliente,
                 strMsg=Caixa(''))
         except Exception as e:
-            print(e)
+            raise e
         finally:
             sConexao.close()
 
@@ -75,27 +69,34 @@ class Servidor():
         # faz o lock e release na tabela de registro
         with self._clientesRegistrados.lock:
             # valor retornado sera o nome endereço e
-            if nome in self._clientesRegistrados.data:
-                valRetornado = (LinhaTabelaRegistro) self._clientesRegistrados.data[nome]
+            if isinstance(self._clientesRegistrados.data, dict):
+                if nome in self._clientesRegistrados.data:
+                    valRetornado = self._clientesRegistrados.data[nome]
         return valRetornado
 
     def cadastraCliente(self, nome, ip, porta):
         cadastrou = False
         with self._clientesRegistrados.lock:
-            # acresenta linha na tabela de registro se o nome ainda não existe
-            if nome not in self._clientesRegistrados.data:
-                # redundante, mas flexivel
-                self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(nome=nome, ip=ip, porta=porta)
-                cadastrou = True
+            if isinstance(self._clientesRegistrados.data, dict):
+                # acrescenta linha na tabela de registro se o nome ainda não existe
+                if nome not in self._clientesRegistrados.data:
+                    # redundante, mas flexivel
+                    self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(
+                        nome=nome, ip=ip, porta=str(porta))
+                    print('\n--------------------')
+                    for k, v in self._clientesRegistrados.data.items():
+                        print(v.nome, '(', v.ip, ':', v.porta, ')')
+                    print('--------------------\n')
+                    cadastrou = True
         return cadastrou
-
 
     def descadastraCliente(self, ip, porta):
         with self._clientesRegistrados.lock:
-            nome = ''
-            for k,v in self._clientesRegistrados.data.items():
-                if v.ip == ip and v.porta == porta:
-                    nome = v.nome
-                    break
-            self._clientesRegistrados.data.pop(nome, None)
+            if isinstance(self._clientesRegistrados.data, dict):
+                nome = None
+                for k, v in self._clientesRegistrados.data.items():
+                    if v.ip == ip and v.porta == str(porta):
+                        nome = v.nome
+                        break
+                self._clientesRegistrados.data.pop(nome, None)
 
