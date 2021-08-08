@@ -1,10 +1,10 @@
-from enum import Enum
 import socket
+from enum import Enum
 from typing import Tuple
-from src.aplicacao.mensagens_aplicacao import MensagensAplicacao
+
+import src.aplicacao.mensagens_aplicacao as ma
+from src.util.maquina_estados import EstadosMaquina, MaquinaEstados
 from src.util.transmissao import Transmissao
-from src.util.maquina_estados import MaquinaEstados, EstadosMaquina
-# from src.cliente_servidor.servidor import Servidor
 
 
 class PossiveisEstadosMaquina(Enum):
@@ -23,7 +23,6 @@ def geraMaquinaServidor() -> MaquinaEstados:
     maquina = MaquinaEstados(
         PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
         PossiveisEstadosMaquina.FINALIZADO)
-
 
     maquina.adicionaEstado(
         # identificador do estado
@@ -47,7 +46,6 @@ def geraMaquinaServidor() -> MaquinaEstados:
         PossiveisEstadosMaquina.ENCERRAMENTO,
         PossiveisEstadosMaquina.ENCERRAMENTO)
 
-
     maquina.adicionaEstado(
         PossiveisEstadosMaquina.REGISTO,
         EstadosMaquina(
@@ -57,7 +55,6 @@ def geraMaquinaServidor() -> MaquinaEstados:
         PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
         PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
 
-
     maquina.adicionaEstado(
         PossiveisEstadosMaquina.CONSULTA,
         EstadosMaquina(
@@ -66,7 +63,6 @@ def geraMaquinaServidor() -> MaquinaEstados:
         PossiveisEstadosMaquina.CONSULTA,
         PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
         PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
-
 
     maquina.adicionaEstado(
         PossiveisEstadosMaquina.ENCERRAMENTO,
@@ -84,38 +80,37 @@ def geraMaquinaServidor() -> MaquinaEstados:
     maquina.confereMaquina()
     return maquina
 
+
 def servidorProcessaMensagemQualquer(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
     socketConexao: socket.socket = kwargs['socketConexao']
 
-    msgBytes = Transmissao.recebeBytes(socketConexao)
-    msg = msgBytes.decode('UTF8')
+    msg = cabecalho, _ = ma.recebePedidoOuResposta(socketConexao)
     kwargs['strMsg'].data = msg
 
     # decide para qual estado ir e transiciona para o estado
-    if msg.startswith(MensagensAplicacao.REGISTO.value.cod):
+    if cabecalho.startswith(ma.MensagensAplicacao.REGISTO.value.cod):
         maquinaEstados.processaSinal(PossiveisEstadosMaquina.REGISTO)
-    elif msg.startswith(MensagensAplicacao.CONSULTA.value.cod):
+    elif cabecalho.startswith(ma.MensagensAplicacao.CONSULTA.value.cod):
         maquinaEstados.processaSinal(PossiveisEstadosMaquina.CONSULTA)
-    elif msg.startswith(MensagensAplicacao.ENCERRAMENTO.value.cod):
+    elif cabecalho.startswith(ma.MensagensAplicacao.ENCERRAMENTO.value.cod):
         maquinaEstados.processaSinal(PossiveisEstadosMaquina.ENCERRAMENTO)
     else:
         # TODO - criar estado para codigo não reconhecido
         pass
 
+
 def servidorProcessaRegistro(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
-    msg: str = kwargs['strMsg'].data
+    msg: Tuple[str, str] = kwargs['strMsg'].data
     servidor = kwargs['servidor']
     socketConexao: socket.socket = kwargs['socketConexao']
     enderecoCliente: Tuple[str, int] = kwargs['enderecoCliente']
 
     registrou = False
-    # ler nome
-    cabecalho, _, corpo = msg.partition('\n')
+    _, corpo = msg
     if corpo:
         nome = corpo
-        ip, porta = enderecoCliente
         encontrado = servidor.consultaRegistro(nome)
         if encontrado:
             registrou = False
@@ -125,55 +120,26 @@ def servidorProcessaRegistro(*args, **kwargs):
     else:
         registrou = False
 
-    if registrou:
-        # envia mensagem registro_exito e imprime a nova tabelas e nome foi registrado
-        Transmissao.enviaBytes(
-            socket=socketConexao,
-            msg=(
-                MensagensAplicacao.REGISTO_EXITO.value.cod +
-                ' ' +
-                MensagensAplicacao.REGISTO_EXITO.value.description).encode('UTF8'))
-    else:
-        # envia mensagem de registro_falho se nome já existia
-        Transmissao.enviaBytes(
-            socket=socketConexao,
-            msg=(
-                MensagensAplicacao.REGISTO_FALHA.value.cod +
-                ' ' +
-                MensagensAplicacao.REGISTO_FALHA.value.description).encode('UTF8'))
+    ma.fazRespostaPedidoRegistro(sConexao=socketConexao, registrou=registrou)
 
     maquinaEstados.processaSinal(PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
 
 def servidorProcessaConsulta(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
-    msg: str = kwargs['strMsg'].data
+    msg: Tuple[str, str] = kwargs['strMsg'].data
     servidor = kwargs['servidor']
     socketConexao: socket.socket = kwargs['socketConexao']
 
-    cabecalho, _, corpo = msg.partition('\n')
+    cabecalho, corpo = msg
     if corpo:
         nome = corpo
         encontrado = servidor.consultaRegistro(nome)
-        if encontrado:
-            Transmissao.enviaBytes(
-                socket=socketConexao,
-                msg=(
-                    MensagensAplicacao.CONSULTA_EXITO.value.cod +
-                    ' ' +
-                    MensagensAplicacao.CONSULTA_EXITO.value.description +
-                    '\n' +
-                    encontrado.ip +
-                    '\n' +
-                    encontrado.porta).encode('UTF8'))
-        else:
-            Transmissao.enviaBytes(
-                socket=socketConexao,
-                msg=(
-                    MensagensAplicacao.CONSULTA_FALHA.value.cod +
-                    ' ' +
-                    MensagensAplicacao.CONSULTA_FALHA.value.description).encode('UTF8'))
+        ma.fazRespostaPedidoConsulta(sConexao=socketConexao, encontrou=bool(
+            encontrado), ip=encontrado.ip, porta=encontrado.porta)
 
     maquinaEstados.processaSinal(PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
 
 def servidorProcessaEncerramento(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
