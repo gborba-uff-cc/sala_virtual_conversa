@@ -1,0 +1,2 @@
+class InvalidIpError(Exception):
+    pass
