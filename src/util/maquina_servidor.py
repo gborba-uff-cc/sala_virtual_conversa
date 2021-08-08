@@ -3,8 +3,8 @@ import socket
 from typing import Tuple
 from src.aplicacao.mensagens_aplicacao import MensagensAplicacao
 from src.util.transmissao import Transmissao
-from .maquina_estados import MaquinaEstados, EstadosMaquina
-from ..servidor.servidor import Servidor
+from src.util.maquina_estados import MaquinaEstados, EstadosMaquina
+# from src.cliente_servidor.servidor import Servidor
 
 
 class PossiveisEstadosMaquina(Enum):
@@ -106,9 +106,9 @@ def servidorProcessaMensagemQualquer(*args, **kwargs):
 def servidorProcessaRegistro(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
     msg: str = kwargs['strMsg'].data
-    servidor: Servidor = kwargs['servidor']
+    servidor = kwargs['servidor']
     socketConexao: socket.socket = kwargs['socketConexao']
-    enderecoCliente: Tuple[str, str] = kwargs['enderecoCliente']
+    enderecoCliente: Tuple[str, int] = kwargs['enderecoCliente']
 
     registrou = False
     # ler nome
@@ -147,7 +147,7 @@ def servidorProcessaRegistro(*args, **kwargs):
 def servidorProcessaConsulta(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
     msg: str = kwargs['strMsg'].data
-    servidor: Servidor = kwargs['servidor']
+    servidor = kwargs['servidor']
     socketConexao: socket.socket = kwargs['socketConexao']
 
     cabecalho, _, corpo = msg.partition('\n')
@@ -177,22 +177,9 @@ def servidorProcessaConsulta(*args, **kwargs):
 
 def servidorProcessaEncerramento(*args, **kwargs):
     maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
-    servidor: Servidor = kwargs['servidor']
+    servidor = kwargs['servidor']
     enderecoCliente: Tuple = kwargs['enderecoCliente']
 
     servidor.descadastraCliente(*enderecoCliente)
 
     maquinaEstados.processaSinal(PossiveisEstadosMaquina.FINALIZADO)
-
-
-# def clienteProcessa(*args, **kwargs):
-#     pass
-
-# def clienteProcessa(*args, **kwargs):
-#     pass
-
-# def clienteProcessa(*args, **kwargs):
-#     pass
-
-# def clienteProcessa(*args, **kwargs):
-#     pass
