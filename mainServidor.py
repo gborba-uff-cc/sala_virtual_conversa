@@ -31,7 +31,7 @@ def mainInterfaceGrafica(janela, servidor: Servidor):
     frameInferior.pack(side=tki.BOTTOM)
 
     btnIniciarServidor = tki.Button(
-        frameSuperior, text='Iniciar Servidor', command=servidor.comecaServir)
+        frameSuperior, text='Abrir Servidor', command=servidor.comecaServir)
     btnFinalizarServidor = tki.Button(
         frameSuperior, text='Fechar Servidor', command=servidor.deixaServir)
     btnIniciarServidor.pack(side=tki.LEFT, padx=70, pady=5)
@@ -95,4 +95,3 @@ if __name__ == '__main__':
     janela.protocol("WM_DELETE_WINDOW", aoFecharJanela)
 
     mainInterfaceGrafica(janela, servidor)
-    tki.Variable()
