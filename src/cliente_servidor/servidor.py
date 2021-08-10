@@ -28,6 +28,11 @@ class Servidor():
         self._socket.bind((self._endereco, self._porta))
         self._socket.listen(3)
 
+    @property
+    def enderecoAtual(self):
+        ip, porta = self._socket.getsockname()
+        return (str(ip), str(porta))
+
     def _processaConexao(self, sConexao: socket.socket, endCliente) -> None:
         """
         Função que trata de cada conexão estabelecida com o servidor;
