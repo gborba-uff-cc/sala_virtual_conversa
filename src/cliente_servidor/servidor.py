@@ -1,12 +1,13 @@
 import socket
 import threading
 from enum import Enum
+from io import SEEK_END, StringIO
 from typing import Dict, NamedTuple, Tuple
 
+import src.aplicacao.mensagens_aplicacao as ma
 from src.util.caixa import Caixa
-from src.util.maquina_servidor import geraMaquinaServidor
+from src.util.maquina_estados import *
 from src.util.mutex import Mutex
-from src.util.transmissao import Transmissao
 
 
 class LinhaTabelaRegistro(NamedTuple):
