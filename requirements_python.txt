@@ -1,0 +1,4 @@
+# uso:
+# python3.8 -m pip install -r ./requirements_python.txt
+
+Pillow==8.3.1
