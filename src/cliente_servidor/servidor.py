@@ -49,16 +49,35 @@ class Servidor():
             self._aceitandoConexoes = True
             threading.Thread(target=self._comecaServir).start()
 
+    def _comecaServir(self):
+        # self.escreveLog('',escreverEmStdOut=True)
+        self.escreveLog('Servidor começou a aceitar novas conexões',
+                        escreverEmStdOut=True, escreverEmLog=True)
+        self.escreveLog('Esperando uma nova conexao...', escreverEmStdOut=True)
         while self._aceitandoConexoes:
-            print('Esperando nova conexao...')
-            socketConexao, enderecoCliente = self._socket.accept()
-            print('Nova conexão de: {}'.format(enderecoCliente))
-
-            novaThread = threading.Thread(
-                target=self._processaConexao,
-                args=(socketConexao, enderecoCliente))
-            novaThread.start()
-            # threading.enumerate()
+            try:
+                socketConexao, enderecoCliente = self._socket.accept()
+                self.escreveLog('\nNova conexão de: {}'.format(
+                    enderecoCliente), escreverEmStdOut=True)
+                socketConexao.setblocking(True)
+                novaThread = threading.Thread(
+                    target=self._processaConexao,
+                    args=(socketConexao, enderecoCliente))
+                novaThread.start()
+                # threading.enumerate()
+                self.escreveLog('Esperando nova conexao...',
+                                escreverEmStdOut=True)
+            except BlockingIOError as be:
+                # "Resource temporarily unavailable" => ninguem tentou se conectar
+                if be.errno == 11:
+                    pass
+                else:
+                    raise be
+            except RuntimeError as re:
+                self.escreveLog(re, escreverEmStdOut=True)
+                raise re
+        self.escreveLog('Servidor parou de aceitar novas conexões',
+                        escreverEmStdOut=True, escreverEmLog=True)
 
     def deixaServir(self):
         self._aceitandoConexoes = False
