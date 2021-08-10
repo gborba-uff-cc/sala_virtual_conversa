@@ -44,13 +44,10 @@ class Servidor():
             sConexao.close()
 
     def comecaServir(self) -> None:
-        try:
-            self._socket.bind((self._endereco, self._porta))
-            self._socket.listen(3)
-        except Exception as e:
-            print(e)
-            self._socket.close()
-            return
+        # evitando reexecucao ao metodo se o servidor ja estiver rodando
+        if not self._aceitandoConexoes:
+            self._aceitandoConexoes = True
+            threading.Thread(target=self._comecaServir).start()
 
         while self._aceitandoConexoes:
             print('Esperando nova conexao...')
