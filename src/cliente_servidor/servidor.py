@@ -21,25 +21,29 @@ class Servidor():
         self._endereco = endereco
         self._porta = porta
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._aceitandoConexoes = True
+        self._aceitandoConexoes = False
         self._clientesRegistrados = Mutex({})
+        self._streamLog = Mutex(StringIO())
+        self._socket.setblocking(False)
+        self._socket.bind((self._endereco, self._porta))
+        self._socket.listen(3)
 
     def _processaConexao(self, sConexao: socket.socket, endCliente) -> None:
         """
-        Função que trata de cada conexão estabeecida com o servidor;
+        Função que trata de cada conexão estabelecida com o servidor;
 
         Essa função é executada para cada conexão em uma thread separada
         """
         try:
-            processador = geraMaquinaServidor()
+            processador = ProcessadorRequisicoes.geraProcessador()
             processador.executa(
                 maquinaEstados=processador,
                 servidor=self,
                 socketConexao=sConexao,
                 enderecoCliente=endCliente,
                 strMsg=Caixa(''))
-        except Exception as e:
-            raise e
+        except RuntimeError as re:
+            raise re
         finally:
             sConexao.close()
 
@@ -92,7 +96,6 @@ class Servidor():
         Consulta e retorna uma linha da tabela de registro se tiver
         encontrado o nome desejado, retorna None no caso contrário
         """
-        encontrou = False
         valRetornado = None
         # faz o lock e release na tabela de registro
         with self._clientesRegistrados.lock:
