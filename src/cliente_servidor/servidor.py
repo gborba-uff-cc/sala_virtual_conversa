@@ -63,8 +63,14 @@ class Servidor():
             novaThread.start()
             # threading.enumerate()
 
+    def deixaServir(self):
+        self._aceitandoConexoes = False
+
+    def fechaSocket(self):
+        self._aceitandoConexoes = False
         self._socket.close()
 
+# ==============================================================================
     def consultaRegistro(self, nome: str):
         """
         Consulta e retorna uma linha da tabela de registro se tiver
