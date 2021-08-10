@@ -133,3 +133,11 @@ class TelaInicial(tk.Tk):
       # TODO - permitir ao usuário realizar uma consulta a outro usuário do servidor
 
       # TODO - apresentar ao usuário o resultado da consulta
+
+      # TODO - ao fechar a aplicação, o cliente deve realizar um pedido de encerramento
+      # por exemplo
+      # def aoFecharJanela():
+      #     socketCliente.realizaPedidoEncerramento()
+      #     janela.quit()
+      # ...
+      # janela.protocol("WM_DELETE_WINDOW", aoFecharJanela) # onde cria a janela
