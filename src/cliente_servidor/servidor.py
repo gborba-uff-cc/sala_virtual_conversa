@@ -96,10 +96,15 @@ class Servidor():
                     # redundante, mas flexivel
                     self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(
                         nome=nome, ip=ip, porta=str(porta))
-                    print('\n--------------------')
+                    tabela = '----------------------------- Clientes Registrados -----------------------------\n'
+                    tabela += '|{0: ^52.52}|{1: ^17.17}|{2: ^7.7}|\n'.format(
+                        'Nome', 'Endereco IP', 'Porta')
+                    tabela += '|------------------------------------------------------------------------------|\n'
                     for k, v in self._clientesRegistrados.data.items():
-                        print(v.nome, '(', v.ip, ':', v.porta, ')')
-                    print('--------------------\n')
+                        tabela += '|{0: <52.52}|{1:^17.17}|{2:^7.7}|\n'.format(
+                            v.nome, v.ip, v.porta)
+                    tabela += '--------------------------------------------------------------------------------'
+                    self.escreveLog(tabela, escreverEmLog=True)
                     cadastrou = True
         return cadastrou
 
