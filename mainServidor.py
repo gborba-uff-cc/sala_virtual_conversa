@@ -1,3 +1,5 @@
+#! /usr/bin/env python3.8
+
 import tkinter as tki
 from io import StringIO
 from os import SEEK_SET
