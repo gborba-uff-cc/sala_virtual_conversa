@@ -141,3 +141,171 @@ class Servidor():
         self._streamLog = Mutex(StringIO())
 
 # ==============================================================================
+    def recebeMensagemQualquer(self, socketConexao: socket.socket):
+        retorno = ma.recebePedidoOuResposta(socketConexao)
+        self.escreveLog(
+            ('{}\n{}' if retorno[-1] else '{}').format(retorno[0], retorno[1]), escreverEmLog=True)
+        return retorno
+
+    def processaRegistro(self, socketConexao: socket.socket, cabecalhoCorpo: Tuple[str, str], enderecoCliente: Tuple[str, int]):
+        registrou = False
+        _, corpo = cabecalhoCorpo
+        if corpo:
+            nome = corpo
+            registrou = self.cadastraCliente(nome, *enderecoCliente)
+        else:
+            registrou = False
+
+        retorno = ma.fazRespostaPedidoRegistro(
+            sConexao=socketConexao, registrou=registrou)
+        self.escreveLog(retorno, escreverEmLog=True)
+
+    def processaConsulta(self, socketConexao: socket.socket, cabecalhoCorpo: Tuple[str, str]):
+        cabecalho, corpo = cabecalhoCorpo
+        if corpo:
+            nome = corpo
+            encontrado = self.consultaRegistro(nome)
+            retorno = None
+            if isinstance(encontrado, LinhaTabelaRegistro):
+                retorno = ma.fazRespostaPedidoConsulta(sConexao=socketConexao, encontrou=bool(
+                    encontrado), ip=encontrado.ip, porta=encontrado.porta)
+            elif encontrado is None:
+                retorno = ma.fazRespostaPedidoConsulta(
+                    sConexao=socketConexao, encontrou=False, ip='', porta='')
+            self.escreveLog(retorno, escreverEmLog=True)
+
+    def processaEncerramento(self, enderecoCliente: Tuple[str, int]):
+        self.descadastraCliente(*enderecoCliente)
+
+# ==============================================================================
+
+
+class PossiveisEstadosMaquina(Enum):
+    MENSAGEM_QUALQUER = 'mensagem_qualquer',
+    REGISTO = 'registo'
+    REGISTO_EXITO = 'registo_exito'
+    REGISTO_FALHA = 'registo_falha'
+    CONSULTA = 'consulta'
+    CONSULTA_EXITO = 'consulta_exito'
+    CONSULTA_FALHA = 'consulta_falha'
+    ENCERRAMENTO = 'encerramento'
+    FINALIZADO = 'finalizado'
+
+
+class ProcessadorRequisicoes():
+    @classmethod
+    def geraProcessador(cls) -> MaquinaEstados:
+        maquina = MaquinaEstados(
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            PossiveisEstadosMaquina.FINALIZADO)
+
+        maquina.adicionaEstado(
+            # identificador do estado
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            # definicao do estado
+            EstadosMaquina(
+                funcaoAoExecutar=cls.servidorProcessaMensagemQualquer))
+        maquina.adicionaTransicao(
+            # estado de origem
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            # sinal de transicao (vou sinalizar com o nome do estado que quero ir)
+            PossiveisEstadosMaquina.REGISTO,
+            # estado de destino
+            PossiveisEstadosMaquina.REGISTO)
+        maquina.adicionaTransicao(
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            PossiveisEstadosMaquina.CONSULTA,
+            PossiveisEstadosMaquina.CONSULTA)
+        maquina.adicionaTransicao(
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            PossiveisEstadosMaquina.ENCERRAMENTO,
+            PossiveisEstadosMaquina.ENCERRAMENTO)
+
+        maquina.adicionaEstado(
+            PossiveisEstadosMaquina.REGISTO,
+            EstadosMaquina(
+                funcaoAoExecutar=cls.servidorProcessaRegistro))
+        maquina.adicionaTransicao(
+            PossiveisEstadosMaquina.REGISTO,
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
+        maquina.adicionaEstado(
+            PossiveisEstadosMaquina.CONSULTA,
+            EstadosMaquina(
+                funcaoAoExecutar=cls.servidorProcessaConsulta))
+        maquina.adicionaTransicao(
+            PossiveisEstadosMaquina.CONSULTA,
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER,
+            PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
+        maquina.adicionaEstado(
+            PossiveisEstadosMaquina.ENCERRAMENTO,
+            EstadosMaquina(
+                funcaoAoExecutar=cls.servidorProcessaEncerramento))
+        maquina.adicionaTransicao(
+            PossiveisEstadosMaquina.ENCERRAMENTO,
+            PossiveisEstadosMaquina.FINALIZADO,
+            PossiveisEstadosMaquina.FINALIZADO)
+
+        maquina.adicionaEstado(
+            PossiveisEstadosMaquina.FINALIZADO,
+            EstadosMaquina())
+
+        maquina.confereMaquina()
+        return maquina
+
+    @classmethod
+    def servidorProcessaMensagemQualquer(cls, *args, **kwargs):
+        maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
+        servidor: Servidor = kwargs['servidor']
+        socketConexao: socket.socket = kwargs['socketConexao']
+
+        cabecalho, _ = msg = servidor.recebeMensagemQualquer(socketConexao)
+        kwargs['strMsg'].data = msg
+
+        # decide para qual estado ir e transiciona
+        if cabecalho.startswith(ma.MensagensAplicacao.REGISTO.value.cod):
+            maquinaEstados.processaSinal(PossiveisEstadosMaquina.REGISTO)
+        elif cabecalho.startswith(ma.MensagensAplicacao.CONSULTA.value.cod):
+            maquinaEstados.processaSinal(PossiveisEstadosMaquina.CONSULTA)
+        elif cabecalho.startswith(ma.MensagensAplicacao.ENCERRAMENTO.value.cod):
+            maquinaEstados.processaSinal(PossiveisEstadosMaquina.ENCERRAMENTO)
+        else:
+            # TODO - criar estado para codigo não reconhecido
+            pass
+
+    @classmethod
+    def servidorProcessaRegistro(cls, *args, **kwargs):
+        maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
+        msg: Tuple[str, str] = kwargs['strMsg'].data
+        servidor: Servidor = kwargs['servidor']
+        socketConexao: socket.socket = kwargs['socketConexao']
+        enderecoCliente: Tuple[str, int] = kwargs['enderecoCliente']
+
+        servidor.processaRegistro(
+            socketConexao=socketConexao, cabecalhoCorpo=msg, enderecoCliente=enderecoCliente)
+
+        maquinaEstados.processaSinal(PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
+    @classmethod
+    def servidorProcessaConsulta(cls, *args, **kwargs):
+        maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
+        msg: Tuple[str, str] = kwargs['strMsg'].data
+        servidor: Servidor = kwargs['servidor']
+        socketConexao: socket.socket = kwargs['socketConexao']
+
+        servidor.processaConsulta(
+            socketConexao=socketConexao, cabecalhoCorpo=msg)
+
+        maquinaEstados.processaSinal(PossiveisEstadosMaquina.MENSAGEM_QUALQUER)
+
+    @classmethod
+    def servidorProcessaEncerramento(cls, *args, **kwargs):
+        maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
+        servidor: Servidor = kwargs['servidor']
+        enderecoCliente: Tuple[str, int] = kwargs['enderecoCliente']
+
+        servidor.processaEncerramento(enderecoCliente=enderecoCliente)
+
+        maquinaEstados.processaSinal(PossiveisEstadosMaquina.FINALIZADO)
