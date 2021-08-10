@@ -118,3 +118,26 @@ class Servidor():
                         nome = v.nome
                         break
                 self._clientesRegistrados.data.pop(nome, None)
+
+    def escreveLog(self, *valores, escreverEmStdOut: bool = False, escreverEmLog: bool = False, separador=' ', terminador='\n', flush=False):
+        """usando print"""
+        if escreverEmLog:
+            with self._streamLog.lock:
+                # teste para remover warning
+                if isinstance(self._streamLog.data, StringIO):
+                    # forcando append
+                    self._streamLog.data.seek(0, SEEK_END)
+                    print(*valores, file=self._streamLog.data,
+                          sep=separador, end=terminador, flush=flush)
+        if escreverEmStdOut:
+            print(*valores)
+
+    @property
+    def streamLog(self):
+        return self._streamLog
+
+    def clearLog(self):
+        """Deve adquirir o lock antes de descartar a stream de texto"""
+        self._streamLog = Mutex(StringIO())
+
+# ==============================================================================
