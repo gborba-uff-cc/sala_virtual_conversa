@@ -34,6 +34,8 @@ class Cliente():
                 O primeiro elemento é o cabecalho da mensagem recebida do servidor
                 O segundo elemento é o corpo da mensagem recebida do servidor
         """
+        if not self._socketConectado:
+            return ('', ('', ''))
         enviado = ma.fazPedidoRegistro(self._socketConexao, nomeDesejado)
         recebido = ma.recebePedidoOuResposta(self._socketConexao)
         return (enviado, recebido)
@@ -49,6 +51,8 @@ class Cliente():
                 O primeiro elemento é o cabecalho da mensagem recebida do servidor
                 O segundo elemento é o corpo da mensagem recebida do servidor
         """
+        if not self._socketConectado:
+            return ('', ('', ''))
         enviado = ma.fazPedidoConsulta(self._socketConexao, nomeDesejado)
         recebido = ma.recebePedidoOuResposta(self._socketConexao)
         return (enviado, recebido)
@@ -59,15 +63,9 @@ class Cliente():
         Não recebe resposta do servidor (servidor não precisa responder mensagem
         de encerramento);
         """
+        if not self._socketConectado:
+            return ('', ('', ''))
         enviado = ma.fazPedidoEncerramento(self._socketConexao)
         self._socketConexao.close()
         self._socketConectado = False
         return enviado
-
-    # FIXME - função não retorna valor; função cadidata a remoção
-    def getStatus(self):
-        self._socketConexao.recv(1024).decode()
-
-    # FIXME - função cadidata a remoção
-    def getClientsDataSizeBytes(self):
-        self._socketConexao.recv(1024)

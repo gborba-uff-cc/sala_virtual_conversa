@@ -1,4 +1,6 @@
-from src.interface.tela_inicial import TelaInicial
+# from src.interface.tela_inicial import TelaInicial
+from src.interface.tela_inicial import ClienteInterfaceApp
 
-TelaInicial()
-
+# TelaInicial()
+app = ClienteInterfaceApp()
+app.mainloop()
