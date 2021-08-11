@@ -22,6 +22,7 @@ class Servidor():
         self._porta = porta
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._aceitandoConexoes = False
+        self._threadLoop = None
         self._clientesRegistrados = Mutex({})
         self._streamLog = Mutex(StringIO())
         self._socket.setblocking(False)
@@ -56,7 +57,8 @@ class Servidor():
         # evitando reexecucao ao metodo se o servidor ja estiver rodando
         if not self._aceitandoConexoes:
             self._aceitandoConexoes = True
-            threading.Thread(target=self._comecaServir).start()
+            if not self._threadLoop:
+                self._threadLoop = threading.Thread(target=self._comecaServir).start()
 
     def _comecaServir(self):
         # self.escreveLog('',escreverEmStdOut=True)
