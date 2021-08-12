@@ -101,52 +101,53 @@ Para instalar os requerimentos do Python digite:
 
 A interface do servidor apresenta o endereço e a porta onde o servidor está sendo executado, dois botões, e uma área destinada aos logs feitos pelo servidor.
 
-O primeiro botão ('Abrir Servidor') faz com que o servidor comece a aceitar por novas conexões, já o segundo botão ('Fechar servidor') faz com que ele pare de aceitar novas conexões, mas esse segundo botão não força que as conexões sendo processadas sejam interrompidas.
+O primeiro botão ('Abrir Servidor') faz com que o servidor passe a aceitar novas conexões, o segundo botão ('Fechar servidor') faz com que ele pare de aceitar novas conexões; esse segundo botão não força que as conexões sendo processadas sejam interrompidas.
 
 A área destinada aos logs é atualizada periodicamente (uma vez a cada 300ms) para exibir algumas das informações que o servidor processa, especificamente, as mensagens enviadas e recebidas pelo servidor e também a tabela de usuários registrados no servidor.
 
 Ao fechar a interface do servidor, ele parará de ouvir por novas conexões e esperará que todas as conexões terminem.
 
-> Obs.: A interface od servidor se encontra no módulo mainServidor em `./` (raiz do projeto)
+> Obs.: A interface do servidor se encontra no módulo mainServidor em `./` (raiz do projeto)
 
 ### ___Servidor___
 
-No momento em que o servidor é instanciado, um objeto do tipo socket também é instanciado, configurado como TCP, configurado como um socket não bloqueante, e é realizado o bind com o endereço localhost e a porta 5000. O motivo do socket não ser bloqueante é para que o servidor possa ser capaz de verificar se deve para de aceitar novas conexões, pois no caso de um socket bloqueante o método accept() faria com que o programa ficasse parado esperando que uma conexão fosse realizada.
+No momento em que o servidor é instanciado, um objeto do tipo socket também é instanciado, configurado como TCP, configurado como um socket não bloqueante, e é realizado o bind com o endereço localhost e a porta 5000. Um problema que surge com o socket bloqueante é que enquanto o servidor estiver esperando por uma conexão, se o programa pedir que ele pare de aceitar novas conexões, ele só poderá verificar esse comando depois que receba uma conexão. Por esse motivo o socket não é bloquenate nessa aplicação, para que quando ele começar a aceitar conexões, ele seja capaz de verificar se deve continuar aceitando ou se deve parar de aceitar novas conexões.
 
-Quando o servidor passa a aceitar conexões, uma nova thread é iniciada liberando assim a thread principal para a realização de outras tarefas, a thread criada fica responsável por receber as novas conexões e por verificar se deve para de aceitar novas conexões. Ao receber uma nova conexão, mais outra thread é criada para tratar dessa conexão, liberando a thread anterior do servidor para aceitar outras conexões.
+Quando o servidor passa a aceitar conexões, uma nova thread é iniciada para liberar a thread principal para a thread principal possa realizar outras tarefas que não estajam relacionadas diretamente com o servidor, essa thread criada fica responsável por receber as novas conexões e por verificar se deve parar de aceitar novas conexões. Ao receber uma nova conexão, mais outra thread é criada para tratar dessa conexão, liberando a thread anterior para aceitar outras conexões.
 
-O servidor contém métodos para registrar um usuário na tabela, consultar se um certo usuário esta cadastrado, descadastrar um usuário da tabela. O método para registrar um usuário armazena um nome, um ip e um numero de porta internamente na tabela (na realidade a tabela é um dicionário python), o método de consulta retorna toda a linha correspondente a um nome e o método que descadastra percorre os valores do dicionario buscando o endereço ip e porta que pediu o descadastramento e remove a entrada associada ao endereço e porta.
+Com relação a lógica da aplicação, o servidor contém métodos para registrar um usuário na tabela usuários, consultar se um certo usuário está cadastrado na tabela e um método para descadastrar um usuário da tabela (a tabela de usuários é uma tabela em memória, implementada com o uso de um dicionário python).
+
+O método para registrar um usuário armazena um nome, um ip e um número de porta internamente na tabela. O método de consulta retorna a linha inteira na tabela que corresponde a um nome passado como parâmetro e o método que descadastra um usuário percorre os valores da tabela buscando o endereço ip e porta que pediu o descadastramento e remove a linha associada a esse endereço e porta.
 
 Além dos métodos referentes ao uso da aplicação, o servidor define métodos para receber um pedido, para processar um pedido de registro, processar um pedido de consulta e também um pedido de encerramento.
 
-O método para recebimento de um pedido/mensagem terceiriza o trabalho para uma outra função (que faz parte do módulo mensagens_aplicacao, essa função sim, sabe como receber mensagens da aplicação), faz o log da mensagem recebida e também retorna a mensagem para que ela seja usado pelos outros métodos do servidor.
+O método para recebimento de um pedido/mensagem terceiriza o trabalho para uma outra função (que faz parte do módulo mensagens_aplicacao, e essa função sim, sabe como receber mensagens/pedidos da aplicação), faz o log da mensagem recebida e ainda retorna a mensagem para que ela seja usada pelos outros métodos do servidor.
 
-O método para processar um registro aceita o nome que o usuário enviou através do cliente e tenta cadastrá-lo, dependendo do resultado do cadastro o servidor responde positivamente ou não ao cliente (a reposta é feita através de uma função do módulo mensagens_aplicacao) e faz o log da mensagem de resposta.
+O método para _processar um pedido de registro_ aceita o nome que o usuário enviou através do cliente e tenta cadastrá-lo, dependendo do resultado do cadastro o servidor responde positivamente ou não ao cliente (a reposta é feita através de uma função do módulo mensagens_aplicacao) e faz o log da mensagem de resposta.
 
-O método para processar uma consulta e de encerramento funciona de maneira análoga ao método para processar um registro (tentando consultar, respondendo de acordo com resultado da consulta e realizando o log da mensagem de resposta transmitida).
+O método para _processar um pedido de consulta_ e de encerramento funciona de maneira análoga ao método para processar um registro (tentando consultar, respondendo de acordo com resultado da consulta e realizando o log da mensagem de resposta transmitida).
 
-O método para processar um encerramento simplesmente tenta descadastrar um usuário da tabela do servidor.
+O método para _processar uma mensagem de encerramento_ simplesmente tenta descadastrar um usuário da tabela do servidor.
 
 ![Estados do processamento da conexão](./readme_files/processamentoConexao.png)
 
-Todo esse o tratamento do processamentos requisitados pelas conexões dos clientes é feita por um 'processador' de conexões (uma máquina de estados) chamar que transiciona os estados de forma a atender à mensagem/ao pedido de cada conexão.
+Todos os métodos de processamento são gerenciados por um 'processador' de conexões (uma implementação ad-hoc de máquina de estados) que chama e transiciona os estados de forma a atender à mensagem/ao pedido de cada conexão.
 
-Além do que já foi mencionado, pelo fato do servidor poder trabalhar com várias threads, foi feito o uso de mutexes para algumas propriedades do servidor, entre elas a tabela de usuários registrados no servidor.
+Além do que já foi mencionado, pelo fato do servidor poder trabalhar com várias threads, foi feito o uso de mutexes para algumas propriedades do servidor que são compartilhadas entre todas as threads do servidor para leitura e escrita, essas propriedades são, a tabela de usuário registrados e o objeto de log com os textos destinados as interface do servidor.
 
 > Obs.: Esse módulo se encontra em `./src/cliente_servidor/`
 
 ### ___Mensagens da aplicação___
 
-Mensagens Aplicacao é o módulo responsável por manipular e padronizar as transmissões e os recebimentos de todas as mensagens da aplicação, seja o envio de pedidos, seja o envio de respostas ou seja o recebimento de pedidos e respostas.
+mensagens_aplicacao é o módulo responsável por manipular e padronizar as transmissões e os recepções de todas as mensagens e pedidos da aplicação. Tanto o envio de pedidos, quanto o envio de respostas ou o recebimento de pedidos e respostas estão definidos aqui e a manipulação dos bytes é delegada ao módulo transmissao.
 
-Esse módulo também define uma enumeração com todas as possíveis mensagens que a aplicação manipula, que atualmente são: pedido de registro, registro efetuado com exito, registro falhou, pedido de consulta, consulta efetuada com exito, consulta falhou e pedido de encerramento.
+Esse módulo também define uma enumeração com todas as possíveis mensagens e pedidos que a aplicação manipula, que atualmente são: pedido de registro, registro efetuado com exito, registro falhou, pedido de consulta, consulta efetuada com exito, consulta falhou e a mensagem de encerramento.
 
 > Obs.: Esse módulo se encontra em `./src/aplicacao/`
 
 ### ___Transmissao___
 
-Transmissao é o módulo responsável por transmitir e receber bytes.
-A biblioteca de sockets requer que a aplicação faça o controle de se todos os bytes foram enviados e recebidos através do socket. Para o controle do recebimento (isso é, saber quando todos os bytes de uma transmissão foram recebidos) o esse módulo implementa o caractere stuffing para fazer a delimitação do início e o fim de uma transmissão.
+transmissao é o módulo responsável por transmitir e receber bytes, esse módulo foi escrito para atender as recomendações da documentação do python3 [citadas aqui](https://docs.python.org/3/library/socket.html#socket.socket.send) e [aqui](https://docs.python.org/3/howto/sockets.html#using-a-socket). Resumindo a biblioteca de sockets requer que a aplicação seja responável por se certificar se todos os bytes foram enviados e recebidos através do socket. Para o controle do recebimento (isso é, saber quando todos os bytes de uma transmissão foram recebidos) esse módulo implementa o caractere stuffing para fazer a delimitação do início e o fim de uma mensagem.
 
 > Obs.: Esse módulo se encontra em `./src/util/`
 
@@ -155,9 +156,9 @@ A biblioteca de sockets requer que a aplicação faça o controle de se todos os
 ![Primeira tela da interface do Cliente](./readme_files/interfaceCliente_tela1.png)
 ![Segunda tela da interface do Cliente](./readme_files/interfaceCliente_tela2.png)
 
-A interface do cliente tem duas telas, onde a primeira tela tem por objetivo adquirir o nome de usuário que será registrado, adquirir o endereço Ip do servidor da aplicação, apresentar um botão para que o usuário interaja iniciando assim a tentativa de conexão e logo em sequência a tentativa de registro do nome de usuário na tabela do servidor, nessa tela também podem ser são apresentados algumas mensagens de alerta notificando ao usuário caso ele não tenha e fornecido um nome de usuário, ou caso o servidor não esteja aceitando conexões.
+A interface do cliente tem duas telas, onde a primeira tela tem por objetivo adquirir o nome de usuário que será registrado, adquirir o endereço Ip do servidor da aplicação e apresentar um botão para que o usuário interaja, iniciando após a interação, a tentativa de conexão e logo em sequência a tentativa de registro do nome de usuário na tabela do servidor, nessa tela também podem ser apresentados algumas mensagens de alerta notificando ao usuário caso ele não tenha fornecido um nome de usuário, ou caso o servidor não esteja aceitando conexões.
 
-A segunda tela da interface do cliente dá opção para que o usuário envie uma requisição de consulta de ao endereço ip e porta associados a um nome na tabela de usuários registrados no servidor da aplicação; nessa tela há uma área destinada a visualização das mensagens enviadas e recebidas na conexão e por último há um ocal para que seja possível realizar uma ligação a um usuário registrado no servidor (_essa funcionalidade deverá ser implementada na segunda parte do trabalho_)
+A segunda tela da interface do cliente dá opção para que o usuário envie uma requisição de consulta a um nome de usuário e receba o endereço ip e porta associados a esse nome na tabela de usuários registrados no servidor da aplicação, a interface dispõe uma área para apresentar os logs gerados a partir das transmissões enviadas e recebidas pelo cliente, além de um campo que será usado futuramente para que o usuário possa realizar uma ligação para outro usuário (_essa funcionalidade deverá ser implementada na segunda parte do trabalho_)
 
 > Obs.: O código da interface do cliente está dividida em dois módulos, mainCliente em `./` (raiz do projeto) e tela_inicial que se encontra em `./src/interface/`
 
@@ -165,7 +166,7 @@ A segunda tela da interface do cliente dá opção para que o usuário envie uma
 
 O cliente é uma classe simples que implementa métodos para abrir a conexaõ com o servidor, métodos que fazem um pedido ao servidor e que retornam a resposta ao pedido; esses métodos que fazem um pedido e esperam um retorno são métodos que embrulham funções do módulo mensagens_aplicacao.
 
-Ainda sobre os métodos do cliente, a função de um dos métodos do cliente é fazer o pedido de registro de um certo nome, recebendo a resposta desse pedido (se ele foi bem-sucedido ou não) e retorna a mensagem enviada assim como também a mensagem recebida (esse retorno é para possibilitar a realização do log das mensagens transmitidas), outro método do cliente, de maneira análoga ao anterior, tem por função realizar o pedido de consulta a um nome, um terceiro método do cliente faz um pedido de encerramento e retorna a mensagem enviada ao servidor.
+Ainda sobre os métodos do cliente, um deles faz o pedido de registro de um certo nome, recebendo a resposta desse pedido (se ele foi bem-sucedido ou não) e retorna para aplicação a mensagem enviada assim também como a mensagem recebida (esse retorno é para possibilitar a realização do log das mensagens transmitidas), outro método do cliente, de maneira análoga ao método anterior, tem por função realizar o pedido de consulta a um nome, um terceiro método do cliente envia uma mensagem de encerramentoao servidor e retorna a mensagem enviada ao servidor.
 
 > Obs.: Esse módulo se encontra em `./src/cliente_servidor/`
 
