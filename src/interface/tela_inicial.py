@@ -40,10 +40,17 @@ class ClienteInterfaceApp(tk.Tk):
         self.mostraPagina(PaginaInicial)
 
     def aoFecharAplicacao(self):
+        """
+        Método que encerrará a conexão do cliente como servidor quando o usuário
+        fechar a aplição.
+        """
         self.client_socket.realizaPedidoEncerramento()
         self.quit()
 
     def mostraPagina(self, pagina: Type[tk.Frame]):
+        """
+        Faz com que a aplicação mostre uma certa tela ao usuário.
+        """
         for paginaMostrada in self._container.pack_slaves():
             paginaMostrada.pack_forget()
         p: tk.Frame = self._paginas[pagina]
@@ -59,11 +66,17 @@ class ClienteInterfaceApp(tk.Tk):
         return self._log_conexao
 
     def escreveNologConexao(self, texto: str):
+        """
+        Atualiza o conteúdo do log da conexão
+        """
         self._log_conexao.append(texto)
         if len(self._log_conexao) > 50:
             self._log_conexao.pop(0)
 
     def limpaLogConexao(self):
+        """
+        Esvazia o conteúdo do log da aplicação
+        """
         self._log_conexao = []
 
 class PaginaInicial(tk.Frame):
@@ -124,12 +137,17 @@ class PaginaInicial(tk.Frame):
         self._usuarioEntry.focus_set()
 
     def conectaRegistra(self):
+        """
+        Define a ação de tentar conectar ao servidor e registrar o cliente,
+        tratando da entrada do usuário
+        """
         validado = False
         nomeUsuario = self._usuarioEntry.get().strip()
         ipServidor = self._ipEntry.get().strip()
         clienteInternet = self._aplicacao.client_socket
 
-        # valida entrada
+        # NOTE - faz a validação da entrada (testando as possibilidades do que
+        # poderiamos fazer)
         if len(nomeUsuario) == 0:
             validado = False
             messagebox.showerror(title='',message='Por favor, digite um nome de usuário com no máximo 30 caracteres')
@@ -140,11 +158,14 @@ class PaginaInicial(tk.Frame):
             validado = True
 
         if validado:
+            # NOTE - tenta conectar e registrar o nome no servidor
             try:
                 clienteInternet.conectaAoServidor(ipServidor, 5000)
+                # NOTE - recupera o que foi enviado e recebido
                 enviado, (cabecalhoRecebido, corpoRecebido) = clienteInternet.realizaPedidoRegistro(nomeUsuario)
                 self._aplicacao.escreveNologConexao(enviado)
                 self._aplicacao.escreveNologConexao(cabecalhoRecebido+'\n'+corpoRecebido)
+                # NOTE - verifica e trata a resposta recebida
                 if cabecalhoRecebido.startswith(MensagensAplicacao.REGISTO_EXITO.value.cod):
                     self._aplicacao.mostraPagina(PaginaConsulta)
                 elif cabecalhoRecebido.startswith(MensagensAplicacao.REGISTO_FALHA.value.cod):
@@ -234,7 +255,7 @@ class PaginaConsulta(tk.Frame):
         nomeUsuario = self._usuarioEntry.get().strip()
         clienteInternet = self._aplicacao.client_socket
 
-        # faz validacao da entrada
+        # NOTE - faz a validacao da entrada
         if len(nomeUsuario) == 0:
             validado = False
             messagebox.showerror(title='',message='Por favor, digite um nome de usuário para a ser buscado')
@@ -245,12 +266,16 @@ class PaginaConsulta(tk.Frame):
             enviado, (cabecalhoRecebido, corpoRecebido) = clienteInternet.realizaPedidoConsulta(nomeUsuario)
             self._aplicacao.escreveNologConexao(enviado)
             self._aplicacao.escreveNologConexao(cabecalhoRecebido+'\n'+corpoRecebido)
+            # NOTE - verifica e trata a resposta recebida
             if cabecalhoRecebido.startswith(MensagensAplicacao.CONSULTA_EXITO.value.cod):
                 pass
             elif cabecalhoRecebido.startswith(MensagensAplicacao.CONSULTA_FALHA.value.cod):
                 messagebox.showinfo(title='', message='Atualmente não há um usuário com o nome fornecido registrado no servidor.')
 
     def escreveLogConexaoTextoPercorrivel(self, log: List[str]):
+        """
+        Mótodo que consome o log da aplicação e o apresenta ao usuário
+        """
         if self._aplicacao.paginaAutal != PaginaConsulta:
             return
 

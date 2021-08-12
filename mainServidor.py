@@ -65,7 +65,7 @@ def escreveLogServidorEmTxtLog(txtLog: tki.Text, scrlLog: tki.Scrollbar, servido
 
 
 def adicionaLinhaLog(txtLog: tki.Text, linha: str, append=True):
-    """Adiciona o texto como uma nova linha ao elemento txtLog od tipo Text"""
+    """Adiciona o texto como uma nova linha ao elemento txtLog do tipo Text"""
     estadoAtual = txtLog.configure('state')[-1]
     if estadoAtual == tki.DISABLED:
         txtLog.config(state=tki.NORMAL)
