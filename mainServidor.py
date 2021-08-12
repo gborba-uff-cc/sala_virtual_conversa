@@ -14,11 +14,12 @@ def mainInterfaceGrafica(janela, servidor: Servidor):
     frameInferior = tki.Frame(janela)
     frameSuperior.pack(side=tki.TOP)
     frameInferior.pack(side=tki.BOTTOM)
+    setTituloJanela(janela, servidor)
 
     btnIniciarServidor = tki.Button(
-        frameSuperior, text='Abrir Servidor', command=servidor.comecaServir)
+        frameSuperior, text='Abrir Servidor', command=lambda: funcaoBotaoAbrirServidor(janela, servidor))
     btnFinalizarServidor = tki.Button(
-        frameSuperior, text='Fechar Servidor', command=servidor.deixaServir)
+        frameSuperior, text='Fechar Servidor', command=lambda: funcaoBotaoFecharServidor(janela, servidor))
     btnIniciarServidor.pack(side=tki.LEFT, padx=70, pady=5)
     btnFinalizarServidor.pack(side=tki.LEFT, padx=70, pady=5)
 
@@ -35,6 +36,17 @@ def mainInterfaceGrafica(janela, servidor: Servidor):
 
     janela.mainloop()
 
+
+def funcaoBotaoAbrirServidor(janela, servidor: Servidor):
+    servidor.comecaServir()
+    setTituloJanela(janela,servidor)
+
+def funcaoBotaoFecharServidor(janela, servidor: Servidor):
+    servidor.deixaServir()
+    setTituloJanela(janela,servidor)
+
+def setTituloJanela(janela, servidor: Servidor):
+    janela.title(f"Servidor em <{ip}:{porta}>{' {Ouvindo}' if servidor.aceitandoConexoes else ''}")
 
 def escreveLogServidorEmTxtLog(txtLog: tki.Text, scrlLog: tki.Scrollbar, servidor: Servidor):
     fimAntes: int = scrlLog.get()[-1]
@@ -75,7 +87,6 @@ if __name__ == '__main__':
     ip, porta = servidor.enderecoAtual
 
     janela = tki.Tk()
-    janela.title('Servidor em <' + ip + ':' + porta + '>')
     janela.resizable(tki.FALSE, tki.FALSE)
     janela.protocol("WM_DELETE_WINDOW", aoFecharJanela)
 
