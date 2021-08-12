@@ -41,146 +41,12 @@ class Servidor():
     def aceitandoConexoes(self):
         return self._aceitandoConexoes
 
-    def _processaConexao(self, sConexao: socket.socket, endCliente) -> None:
-        """
-        Função que trata de cada conexão estabelecida com o servidor;
+    @property
+    def streamLog(self):
+        """A stream que contem o log do servidor"""
+        return self._streamLog
 
-        Essa função é executada para cada conexão em uma thread separada
-        """
-        try:
-            processador = ProcessadorRequisicoes.geraProcessador()
-            processador.executa(
-                maquinaEstados=processador,
-                servidor=self,
-                socketConexao=sConexao,
-                enderecoCliente=endCliente,
-                strMsg=Caixa(''))
-        except RuntimeError as re:
-            raise re
-        finally:
-            sConexao.close()
-
-    def comecaServir(self) -> None:
-        # evitando reexecucao do metodo se o servidor ja estiver rodando
-        if not self._aceitandoConexoes:
-            self._aceitandoConexoes = True
-            threading.Thread(target=self._comecaServir).start()
-
-    def _comecaServir(self):
-        self.escreveLog('Servidor começou a aceitar novas conexões',
-                        escreverEmStdOut=True, escreverEmLog=True)
-        self.escreveLog('Esperando uma nova conexao...', escreverEmStdOut=True)
-        while self._aceitandoConexoes:
-            try:
-                socketConexao, enderecoCliente = self._socket.accept()
-                self.escreveLog('\nNova conexão de: {}'.format(
-                    enderecoCliente), escreverEmStdOut=True)
-                socketConexao.setblocking(True)
-                novaThread = threading.Thread(
-                    target=self._processaConexao,
-                    args=(socketConexao, enderecoCliente))
-                novaThread.start()
-                # threading.enumerate()
-                self.escreveLog('Esperando nova conexao...',
-                                escreverEmStdOut=True)
-            except BlockingIOError as be:
-                # NOTE - "[ERRNO 11] Resource temporarily unavailable" => ninguem
-                # tentou se conectar
-                if be.errno == 11:
-                    pass
-                else:
-                    raise be
-            except RuntimeError as re:
-                self.escreveLog(re, escreverEmStdOut=True)
-                raise re
-        self.escreveLog('Servidor parou de aceitar novas conexões',
-                        escreverEmStdOut=True, escreverEmLog=True)
-
-    def deixaServir(self):
-        self._aceitandoConexoes = False
-
-    def fechaSocket(self):
-        self._aceitandoConexoes = False
-        self._socket.close()
-
-# ==============================================================================
-    def consultaRegistro(self, nome: str) -> Union[LinhaTabelaRegistro, None]:
-        """
-        Consulta e retorna uma linha da tabela de registro se tiver
-        encontrado o nome desejado, retorna None caso contrário
-        """
-        valRetornado = None
-        # NOTE - usando with para fazer o lock e release na tabela de registro
-        with self._clientesRegistrados.lock:
-            # NOTE - isinstance está servindo para remover warnings
-            if isinstance(self._clientesRegistrados.data, dict):
-                if nome in self._clientesRegistrados.data:
-                    valRetornado = self._clientesRegistrados.data[nome]
-            else:
-                self.escreveLog(
-                    '>>> servidor.consultaRegistro: a implementação da tabela de registro não é a esperada',
-                    escreverEmStdOut=True, escreverEmLog=True)
-        # NOTE - valor retornado sera a linha da tabela de usuarios registrados ou None
-        return valRetornado
-
-    def cadastraCliente(self, nome, ip, porta):
-        """Tenta incluir uma linha na tabela de clientes registrados"""
-        nomeString = str(nome)
-        ipString = str(ip)
-        portaString = str(porta)
-        jaCadastrado = False
-        # NOTE - usando with para fazer o lock e release na tabela de registro
-        with self._clientesRegistrados.lock:
-            # NOTE - isinstance está servindo para remover warnings
-            if isinstance(self._clientesRegistrados.data, dict):
-                # NOTE - verifica se o nome já está em uso e se a conexao ainda não
-                # registrou um nome
-                nomeExiste = nomeString in self._clientesRegistrados.data
-                socketCadastrado = False
-                for linhaTabela in self._clientesRegistrados.data.values():
-                    if linhaTabela.ip == ipString and linhaTabela.porta == portaString:
-                        socketCadastrado = True
-                        break
-                jaCadastrado = nomeExiste or socketCadastrado
-                # NOTE - adiciona linha na tabela de registro se nome ainda nao existe
-                # e a conexao ainda não se registrou
-                if not jaCadastrado:
-                    # NOTE - a chave tambem constar no valor eh redundante mas flexivel
-                    self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(
-                        nome=nome, ip=ip, porta=str(porta))
-                    self._escreveTabelaUsuariosNoLog()
-            else:
-                self.escreveLog(
-                    '>>> servidor.cadastraCliente: a implementação da tabela de registro não é a esperada',
-                    escreverEmStdOut=True, escreverEmLog=True)
-            # NOTE - se ja cadastrado entao o cadastro nao foi feito;
-            # retona True se foi feito o cadastro, False no caso contrario
-            return not jaCadastrado
-        return False
-
-    def descadastraCliente(self, ip, porta):
-        """Remove uma entrada da tabela de clientes registrados"""
-        ipString = str(ip)
-        portaString = str(porta)
-        # NOTE - usando with para fazer o lock e release na tabela de registro
-        with self._clientesRegistrados.lock:
-            # NOTE - isinstance está servindo para remover warnings
-            if isinstance(self._clientesRegistrados.data, dict):
-                nome = None
-                # NOTE - encontra o endereco e porta da conexao que pediu a remocao
-                for _, v in self._clientesRegistrados.data.items():
-                    if v.ip == ipString and v.porta == portaString:
-                        nome = v.nome
-                        break
-                # NOTE - ao encontrar remove a linha correspondente na tabela
-                self._clientesRegistrados.data.pop(nome, None)
-                self._escreveTabelaUsuariosNoLog()
-            else:
-                self.escreveLog(
-                    '>>> servidor.descadastraCliente: a implementação da tabela de registro não é a esperada',
-                    escreverEmStdOut=True, escreverEmLog=True)
-
-    def escreveLog(self, *valores, escreverEmStdOut: bool = False, escreverEmLog: bool = False, separador=' ', terminador='\n', flush=False):
+    def _escreveLog(self, *valores, escreverEmStdOut: bool = False, escreverEmLog: bool = False, separador=' ', terminador='\n', flush=False):
         """
         Usa a função print do Python para escrever na stream de log do servidor
         e/ou na saida padrão.
@@ -216,12 +82,69 @@ class Servidor():
                 tabela += '|{0: <52.52}|{1:^17.17}|{2:^7.7}|\n'.format(
                     v.nome, v.ip, v.porta)
             tabela += '--------------------------------------------------------------------------------'
-            self.escreveLog(tabela, escreverEmLog=True)
+            self._escreveLog(tabela, escreverEmLog=True)
 
-    @property
-    def streamLog(self):
-        """A stream que contem o log do servidor"""
-        return self._streamLog
+    def _processaConexao(self, sConexao: socket.socket, endCliente) -> None:
+        """
+        Função que trata de cada conexão estabelecida com o servidor;
+
+        Essa função é executada para cada conexão em uma thread separada
+        """
+        try:
+            processador = ProcessadorRequisicoes.geraProcessador()
+            processador.executa(
+                maquinaEstados=processador,
+                servidor=self,
+                socketConexao=sConexao,
+                enderecoCliente=endCliente,
+                strMsg=Caixa(''))
+        except RuntimeError as re:
+            raise re
+        finally:
+            sConexao.close()
+
+    def _comecaServir(self):
+        self._escreveLog('Servidor começou a aceitar novas conexões',
+                        escreverEmStdOut=True, escreverEmLog=True)
+        self._escreveLog('Esperando uma nova conexao...', escreverEmStdOut=True)
+        while self._aceitandoConexoes:
+            try:
+                socketConexao, enderecoCliente = self._socket.accept()
+                self._escreveLog('\nNova conexão de: {}'.format(
+                    enderecoCliente), escreverEmStdOut=True)
+                socketConexao.setblocking(True)
+                novaThread = threading.Thread(
+                    target=self._processaConexao,
+                    args=(socketConexao, enderecoCliente))
+                novaThread.start()
+                # threading.enumerate()
+                self._escreveLog('Esperando nova conexao...',
+                                escreverEmStdOut=True)
+            except BlockingIOError as be:
+                # NOTE - "[ERRNO 11] Resource temporarily unavailable" => ninguem
+                # tentou se conectar
+                if be.errno == 11:
+                    pass
+                else:
+                    raise be
+            except RuntimeError as re:
+                self._escreveLog(re, escreverEmStdOut=True)
+                raise re
+        self._escreveLog('Servidor parou de aceitar novas conexões',
+                        escreverEmStdOut=True, escreverEmLog=True)
+
+    def comecaServir(self) -> None:
+        # evitando reexecucao do metodo se o servidor ja estiver rodando
+        if not self._aceitandoConexoes:
+            self._aceitandoConexoes = True
+            threading.Thread(target=self._comecaServir).start()
+
+    def deixaServir(self):
+        self._aceitandoConexoes = False
+
+    def fechaSocket(self):
+        self._aceitandoConexoes = False
+        self._socket.close()
 
     def clearLog(self):
         """
@@ -230,7 +153,84 @@ class Servidor():
         A função/método que utilizar esse método deverá realizar o acquire e
         release do lock
         """
-        self._streamLog = Mutex(StringIO())
+        self._streamLog.data = StringIO()
+
+# ==============================================================================
+    def consultaRegistro(self, nome: str) -> Union[LinhaTabelaRegistro, None]:
+        """
+        Consulta e retorna uma linha da tabela de registro se tiver
+        encontrado o nome desejado, retorna None caso contrário
+        """
+        valRetornado = None
+        # NOTE - usando with para fazer o lock e release na tabela de registro
+        with self._clientesRegistrados.lock:
+            # NOTE - isinstance está servindo para remover warnings
+            if isinstance(self._clientesRegistrados.data, dict):
+                if nome in self._clientesRegistrados.data:
+                    valRetornado = self._clientesRegistrados.data[nome]
+            else:
+                self._escreveLog(
+                    '>>> servidor.consultaRegistro: a implementação da tabela de registro não é a esperada',
+                    escreverEmStdOut=True, escreverEmLog=True)
+        # NOTE - valor retornado sera a linha da tabela de usuarios registrados ou None
+        return valRetornado
+
+    def cadastraCliente(self, nome, ip, porta):
+        """Tenta incluir uma linha na tabela de clientes registrados"""
+        nomeString = str(nome)
+        ipString = str(ip)
+        portaString = str(porta)
+        jaCadastrado = False
+        # NOTE - usando with para fazer o lock e release na tabela de registro
+        with self._clientesRegistrados.lock:
+            # NOTE - isinstance está servindo para remover warnings
+            if isinstance(self._clientesRegistrados.data, dict):
+                # NOTE - verifica se o nome já está em uso e se a conexao ainda não
+                # registrou um nome
+                nomeExiste = nomeString in self._clientesRegistrados.data
+                socketCadastrado = False
+                for linhaTabela in self._clientesRegistrados.data.values():
+                    if linhaTabela.ip == ipString and linhaTabela.porta == portaString:
+                        socketCadastrado = True
+                        break
+                jaCadastrado = nomeExiste or socketCadastrado
+                # NOTE - adiciona linha na tabela de registro se nome ainda nao existe
+                # e a conexao ainda não se registrou
+                if not jaCadastrado:
+                    # NOTE - a chave tambem constar no valor eh redundante mas flexivel
+                    self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(
+                        nome=nome, ip=ip, porta=str(porta))
+                    self._escreveTabelaUsuariosNoLog()
+            else:
+                self._escreveLog(
+                    '>>> servidor.cadastraCliente: a implementação da tabela de registro não é a esperada',
+                    escreverEmStdOut=True, escreverEmLog=True)
+            # NOTE - se ja cadastrado entao o cadastro nao foi feito;
+            # retona True se foi feito o cadastro, False no caso contrario
+            return not jaCadastrado
+        return False
+
+    def descadastraCliente(self, ip, porta):
+        """Remove uma entrada da tabela de clientes registrados"""
+        ipString = str(ip)
+        portaString = str(porta)
+        # NOTE - usando with para fazer o lock e release na tabela de registro
+        with self._clientesRegistrados.lock:
+            # NOTE - isinstance está servindo para remover warnings
+            if isinstance(self._clientesRegistrados.data, dict):
+                nome = None
+                # NOTE - encontra o endereco e porta da conexao que pediu a remocao
+                for _, v in self._clientesRegistrados.data.items():
+                    if v.ip == ipString and v.porta == portaString:
+                        nome = v.nome
+                        break
+                # NOTE - ao encontrar remove a linha correspondente na tabela
+                self._clientesRegistrados.data.pop(nome, None)
+                self._escreveTabelaUsuariosNoLog()
+            else:
+                self._escreveLog(
+                    '>>> servidor.descadastraCliente: a implementação da tabela de registro não é a esperada',
+                    escreverEmStdOut=True, escreverEmLog=True)
 
 # ==============================================================================
     # NOTE - Metodos para atender a aplicacao
@@ -239,7 +239,7 @@ class Servidor():
         Recebe uma mensagem qualquer da aplicação qeu foi recebida do cliente
         """
         retorno = ma.recebePedidoOuResposta(socketConexao)
-        self.escreveLog(
+        self._escreveLog(
             ('{}\n{}' if retorno[-1] else '{}').format(retorno[0], retorno[1]), escreverEmLog=True)
         return retorno
 
@@ -257,7 +257,7 @@ class Servidor():
 
         retorno = ma.fazRespostaPedidoRegistro(
             sConexao=socketConexao, registrou=registrou)
-        self.escreveLog(retorno, escreverEmLog=True)
+        self._escreveLog(retorno, escreverEmLog=True)
 
     def processaConsulta(self, socketConexao: socket.socket, cabecalhoCorpo: Tuple[str, str]):
         """
@@ -274,7 +274,7 @@ class Servidor():
             else:
                 retorno = ma.fazRespostaPedidoConsulta(sConexao=socketConexao, encontrou=bool(
                     encontrado), ip=encontrado.ip, porta=encontrado.porta)
-            self.escreveLog(retorno, escreverEmLog=True)
+            self._escreveLog(retorno, escreverEmLog=True)
 
     def processaEncerramento(self, enderecoCliente: Tuple[str, int]):
         """

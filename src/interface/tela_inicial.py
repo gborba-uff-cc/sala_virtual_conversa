@@ -258,7 +258,7 @@ class PaginaConsulta(tk.Frame):
         # NOTE - faz a validacao da entrada
         if len(nomeUsuario) == 0:
             validado = False
-            messagebox.showerror(title='',message='Por favor, digite um nome de usuário para a ser buscado')
+            messagebox.showerror(title='',message='Por favor, digite um nome de usuário para ser buscado')
         else:
             validado = True
 
