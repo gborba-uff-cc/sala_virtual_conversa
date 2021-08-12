@@ -8,22 +8,6 @@ from typing import Callable
 from src.cliente_servidor.servidor import Servidor
 
 
-class funcaoPeriodica():
-    def __init__(self, ms, limiteVezes: int, funcao: Callable, widgetPai) -> None:
-        self.ms = ms
-        self.limite = limiteVezes
-        self.funcao = funcao
-        self.execucaoAtual = 0
-        self.widgetPai = widgetPai
-
-    def comeca(self):
-        if not self.limite or (self.execucaoAtual < self.limite):
-            if self.limite:
-                self.execucaoAtual += 1
-            self.funcao()
-            self.widgetPai.after(self.ms, self.comeca)
-
-
 def mainInterfaceGrafica(janela, servidor: Servidor):
     frameSuperior = tki.Frame(janela)
     frameInferior = tki.Frame(janela)
