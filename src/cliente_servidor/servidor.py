@@ -120,15 +120,7 @@ class Servidor():
                     # redundante, mas flexivel
                     self._clientesRegistrados.data[nome] = LinhaTabelaRegistro(
                         nome=nome, ip=ip, porta=str(porta))
-                    tabela = '----------------------------- Clientes Registrados -----------------------------\n'
-                    tabela += '|{0: ^52.52}|{1: ^17.17}|{2: ^7.7}|\n'.format(
-                        'Nome', 'Endereco IP', 'Porta')
-                    tabela += '|------------------------------------------------------------------------------|\n'
-                    for k, v in self._clientesRegistrados.data.items():
-                        tabela += '|{0: <52.52}|{1:^17.17}|{2:^7.7}|\n'.format(
-                            v.nome, v.ip, v.porta)
-                    tabela += '--------------------------------------------------------------------------------'
-                    self.escreveLog(tabela, escreverEmLog=True)
+                    self._escreveSemLockTabelaUsuariosNoLog()
                     cadastrou = True
         return cadastrou
 
@@ -142,6 +134,7 @@ class Servidor():
                         nome = v.nome
                         break
                 self._clientesRegistrados.data.pop(nome, None)
+                self._escreveSemLockTabelaUsuariosNoLog()
 
     def escreveLog(self, *valores, escreverEmStdOut: bool = False, escreverEmLog: bool = False, separador=' ', terminador='\n', flush=False):
         """usando print"""
@@ -155,6 +148,20 @@ class Servidor():
                           sep=separador, end=terminador, flush=flush)
         if escreverEmStdOut:
             print(*valores)
+
+    def _escreveSemLockTabelaUsuariosNoLog(self):
+        """O lock da tabela deve ser adquirido antes de utilizar esse método"""
+        # removendo warning
+        if isinstance(self._clientesRegistrados.data, dict):
+            tabela = '----------------------------- Clientes Registrados -----------------------------\n'
+            tabela += '|{0: ^52.52}|{1: ^17.17}|{2: ^7.7}|\n'.format(
+                'Nome', 'Endereco IP', 'Porta')
+            tabela += '|------------------------------------------------------------------------------|\n'
+            for k, v in self._clientesRegistrados.data.items():
+                tabela += '|{0: <52.52}|{1:^17.17}|{2:^7.7}|\n'.format(
+                    v.nome, v.ip, v.porta)
+            tabela += '--------------------------------------------------------------------------------'
+            self.escreveLog(tabela, escreverEmLog=True)
 
     @property
     def streamLog(self):
