@@ -12,6 +12,8 @@ from src.util.tkinter_funcao_periodica import FuncaoPeriodica
 class ClienteInterfaceApp(tk.Tk):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.resizable(tk.FALSE, tk.FALSE)
+
         # um container para o conteudo da interface
         self._container = tk.Frame(self)
         self.client_socket = Cliente()
