@@ -250,7 +250,7 @@ class PaginaConsulta(tk.Frame):
         fimAntes: int = self._textoPercorrivel.vbar.get()[-1]
         self._textoPercorrivel.config(state=tk.NORMAL)
         for texto in log:
-            self._textoPercorrivel.insert(tk.INSERT, texto+'\n')
+            self._textoPercorrivel.insert(tk.END, texto+'\n')
         self._aplicacao.limpaLogConexao()
 
         # apaga as linhas mais antigas se total passou de 50 linhas
