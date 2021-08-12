@@ -6,6 +6,7 @@ from os import SEEK_SET
 from typing import Callable
 
 from src.cliente_servidor.servidor import Servidor
+from src.util.tkinter_funcao_periodica import FuncaoPeriodica
 
 
 def mainInterfaceGrafica(janela, servidor: Servidor):
@@ -28,7 +29,7 @@ def mainInterfaceGrafica(janela, servidor: Servidor):
     txtLog.pack(side=tki.LEFT)
     scrlLog.pack(side=tki.LEFT, fill=tki.Y)
 
-    f1 = funcaoPeriodica(300, 0, lambda: False, janela)
+    f1 = FuncaoPeriodica(300, 0, lambda: False, janela)
     f1.funcao = lambda: escreveLogServidorEmTxtLog(txtLog, scrlLog, servidor)
     janela.after(f1.ms, f1.comeca())
 

@@ -1,11 +1,13 @@
 import tkinter as tk
-from typing import List, Type
-from PIL import Image, ImageTk
 from tkinter import messagebox, scrolledtext
+from typing import List, Type
+
+from PIL import Image, ImageTk
+from src.aplicacao.mensagens_aplicacao import MensagensAplicacao
 from src.cliente_servidor.cliente import Cliente
 from src.util.excepts import InvalidIpError
-from src.aplicacao.mensagens_aplicacao import MensagensAplicacao
-from mainServidor import funcaoPeriodica
+from src.util.tkinter_funcao_periodica import FuncaoPeriodica
+
 
 class ClienteInterfaceApp(tk.Tk):
     def __init__(self, *args, **kwargs) -> None:
@@ -218,7 +220,7 @@ class PaginaConsulta(tk.Frame):
         self._usuarioEntry.focus_set()
 
         # recupera log da conexao e apresenta na tela a cada 300ms
-        f1 = funcaoPeriodica(300, 0, lambda: False, self)
+        f1 = FuncaoPeriodica(300, 0, lambda: False, self)
         f1.funcao = lambda: self.escreveLogConexaoTextoPercorrivel(self._aplicacao.logConexao)
         self.after(f1.ms, f1.comeca())
 
