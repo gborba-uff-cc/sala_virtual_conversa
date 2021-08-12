@@ -219,10 +219,13 @@ class PaginaConsulta(tk.Frame):
         # colocando o foco do teclado no campo usuario
         self._usuarioEntry.focus_set()
 
-        # recupera log da conexao e apresenta na tela a cada 300ms
-        f1 = FuncaoPeriodica(300, 0, lambda: False, self)
-        f1.funcao = lambda: self.escreveLogConexaoTextoPercorrivel(self._aplicacao.logConexao)
-        self.after(f1.ms, f1.comeca())
+        # NOTE - definindo uma funcao que vai ser executada a cada 300ms
+        # essa função atualiza o campo de visualizacao do log
+        f1 = FuncaoPeriodica(
+            300, 0,
+            lambda: self.escreveLogConexaoTextoPercorrivel(self._aplicacao.logConexao),
+            self)
+        f1.comeca()
 
     def procuraUsuario(self):
         validado = False

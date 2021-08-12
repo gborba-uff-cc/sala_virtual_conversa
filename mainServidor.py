@@ -30,9 +30,13 @@ def mainInterfaceGrafica(janela, servidor: Servidor):
     txtLog.pack(side=tki.LEFT)
     scrlLog.pack(side=tki.LEFT, fill=tki.Y)
 
-    f1 = FuncaoPeriodica(300, 0, lambda: False, janela)
-    f1.funcao = lambda: escreveLogServidorEmTxtLog(txtLog, scrlLog, servidor)
-    janela.after(f1.ms, f1.comeca())
+    # NOTE - definindo uma funcao que vai ser executada a cada 300ms
+    # essa função atualiza o campo de visualizacao do log
+    f1 = FuncaoPeriodica(
+        300, 0,
+        lambda: escreveLogServidorEmTxtLog(txtLog, scrlLog, servidor),
+        janela)
+    f1.comeca()
 
     janela.mainloop()
 
