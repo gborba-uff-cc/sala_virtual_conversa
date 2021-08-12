@@ -225,7 +225,10 @@ class Servidor():
 
     def clearLog(self):
         """
-        Deve adquirir o lock antes de descartar a stream de texto
+        Descarta a stream de log
+
+        A função/método que utilizar esse método deverá realizar o acquire e
+        release do lock
         """
         self._streamLog = Mutex(StringIO())
 
