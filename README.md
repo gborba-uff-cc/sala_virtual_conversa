@@ -12,7 +12,7 @@ Trabalho da disciplina de 'Redes de Computadores 2'
             - [**Linux**](#linux)
             - [**Python3.8**](#python38)
         - [Execução](#execu%C3%A7%C3%A3o)
-    - [Implementação parte 1 do trabalho](#implementa%C3%A7%C3%A3o-parte-1-do-trabalho)
+    - [Implementação da primeira parte do trabalho](#implementa%C3%A7%C3%A3o-da-primeira-parte-do-trabalho)
         - [___Interface servidor___](#___interface-servidor___)
         - [___Servidor___](#___servidor___)
         - [___Mensagens da aplicação___](#___mensagens-da-aplica%C3%A7%C3%A3o___)
@@ -93,17 +93,21 @@ Para instalar os requerimentos do Python digite:
 
 ---
 
-## Implementação (parte 1 do trabalho)
+## Implementação da primeira parte do trabalho
 
 ### ___Interface servidor___
+
+![Interface do servidor da aplicação](./readme_files/interfaceServidor.png)
 
 A interface do servidor apresenta o endereço e a porta onde o servidor está sendo executado, dois botões, e uma área destinada aos logs feitos pelo servidor.
 
 O primeiro botão ('Abrir Servidor') faz com que o servidor comece a aceitar por novas conexões, já o segundo botão ('Fechar servidor') faz com que ele pare de aceitar novas conexões, mas esse segundo botão não força que as conexões sendo processadas sejam interrompidas.
 
-A área destinada aos logs exibirá a certos intervalos de tempo (300ms) algumas das informações que o servidor processa, especificamente, as mensagens enviadas e recebidas pelo servidor e também a tabela de usuários registrados no servidor.
+A área destinada aos logs é atualizada periodicamente (uma vez a cada 300ms) para exibir algumas das informações que o servidor processa, especificamente, as mensagens enviadas e recebidas pelo servidor e também a tabela de usuários registrados no servidor.
 
 Ao fechar a interface do servidor, ele parará de ouvir por novas conexões e esperará que todas as conexões terminem.
+
+> Obs.: A interface od servidor se encontra no módulo mainServidor em `./` (raiz do projeto)
 
 ### ___Servidor___
 
@@ -123,9 +127,13 @@ O método para processar uma consulta e de encerramento funciona de maneira aná
 
 O método para processar um encerramento simplesmente tenta descadastrar um usuário da tabela do servidor.
 
+![Estados do processamento da conexão](./readme_files/processamentoConexao.png)
+
 Todo esse o tratamento do processamentos requisitados pelas conexões dos clientes é feita por um 'processador' de conexões (uma máquina de estados) chamar que transiciona os estados de forma a atender à mensagem/ao pedido de cada conexão.
 
 Além do que já foi mencionado, pelo fato do servidor poder trabalhar com várias threads, foi feito o uso de mutexes para algumas propriedades do servidor, entre elas a tabela de usuários registrados no servidor.
+
+> Obs.: Esse módulo se encontra em `./src/cliente_servidor/`
 
 ### ___Mensagens da aplicação___
 
@@ -133,17 +141,33 @@ Mensagens Aplicacao é o módulo responsável por manipular e padronizar as tran
 
 Esse módulo também define uma enumeração com todas as possíveis mensagens que a aplicação manipula, que atualmente são: pedido de registro, registro efetuado com exito, registro falhou, pedido de consulta, consulta efetuada com exito, consulta falhou e pedido de encerramento.
 
+> Obs.: Esse módulo se encontra em `./src/aplicacao/`
+
 ### ___Transmissao___
 
-Transmissao é o módulo responsável por transmitir e receber bytes, por que a biblioteca de sockets requer que a aplicação mantenha o controle de que se todos os bytes foram enviados ou recebidos atraves do socket; sobre o controle de recebimento (saber quando todos os bytes de uma transmissão foram recebidos) o módulo implementa o caractere stuffing para delimitar o início e o fim de uma transmissão.
+Transmissao é o módulo responsável por transmitir e receber bytes.
+A biblioteca de sockets requer que a aplicação faça o controle de se todos os bytes foram enviados e recebidos através do socket. Para o controle do recebimento (isso é, saber quando todos os bytes de uma transmissão foram recebidos) o esse módulo implementa o caractere stuffing para fazer a delimitação do início e o fim de uma transmissão.
+
+> Obs.: Esse módulo se encontra em `./src/util/`
 
 ### ___Interface cliente___
 
-TODO
+![Primeira tela da interface do Cliente](./readme_files/interfaceCliente_tela1.png)
+![Segunda tela da interface do Cliente](./readme_files/interfaceCliente_tela2.png)
+
+A interface do cliente tem duas telas, onde a primeira tela tem por objetivo adquirir o nome de usuário que será registrado, adquirir o endereço Ip do servidor da aplicação, apresentar um botão para que o usuário interaja iniciando assim a tentativa de conexão e logo em sequência a tentativa de registro do nome de usuário na tabela do servidor, nessa tela também podem ser são apresentados algumas mensagens de alerta notificando ao usuário caso ele não tenha e fornecido um nome de usuário, ou caso o servidor não esteja aceitando conexões.
+
+A segunda tela da interface do cliente dá opção para que o usuário envie uma requisição de consulta de ao endereço ip e porta associados a um nome na tabela de usuários registrados no servidor da aplicação; nessa tela há uma área destinada a visualização das mensagens enviadas e recebidas na conexão e por último há um ocal para que seja possível realizar uma ligação a um usuário registrado no servidor (_essa funcionalidade deverá ser implementada na segunda parte do trabalho_)
+
+> Obs.: O código da interface do cliente está dividida em dois módulos, mainCliente em `./` (raiz do projeto) e tela_inicial que se encontra em `./src/interface/`
 
 ### ___Cliente___
 
-O cliente é uma classe simples que implementa métodos que fazem um pedido ao servidor e que retornam a resposta ao pedido, esses métodos fazem: um deles, o pedido de registro de um certo nome, recebendo a resposta do pedido (se bem-sucedido ou não) e retornando a mensagem enviada e a mensagem recebida, o pedido de consulta, outro método análogamente faz o pedido de consulta a um nome e mais outro método que faz um pedido de encerramento e retorna a mensagem enviada.
+O cliente é uma classe simples que implementa métodos para abrir a conexaõ com o servidor, métodos que fazem um pedido ao servidor e que retornam a resposta ao pedido; esses métodos que fazem um pedido e esperam um retorno são métodos que embrulham funções do módulo mensagens_aplicacao.
+
+Ainda sobre os métodos do cliente, a função de um dos métodos do cliente é fazer o pedido de registro de um certo nome, recebendo a resposta desse pedido (se ele foi bem-sucedido ou não) e retorna a mensagem enviada assim como também a mensagem recebida (esse retorno é para possibilitar a realização do log das mensagens transmitidas), outro método do cliente, de maneira análoga ao anterior, tem por função realizar o pedido de consulta a um nome, um terceiro método do cliente faz um pedido de encerramento e retorna a mensagem enviada ao servidor.
+
+> Obs.: Esse módulo se encontra em `./src/cliente_servidor/`
 
 ---
 
