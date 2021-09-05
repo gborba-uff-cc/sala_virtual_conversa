@@ -19,6 +19,12 @@ class MensagensAplicacao(Enum):
     CONSULTA_FALHA = MensagemAplicacao('6', 'CONSULTA MAL-SUCEDIDA')
     ENCERRAMENTO = MensagemAplicacao('7', 'PEDIDO ENCERRAMENTO')
 
+class MensagensLigacao(Enum):
+    CONVITE = MensagemAplicacao('','PEDIDO CONVITE')
+    CONVITE_ACEITO = MensagemAplicacao('','CONVITE ACEITO')
+    CONVITE_REJEITADO = MensagemAplicacao('','CONVITE REJEITADO')
+    ENCERRAR_LIGACAO = MensagemAplicacao('','ENCERRAR LIGACAO')
+    PACOTE_AUDIO = MensagemAplicacao('','PACOTE AUDIO')
 
 def fazPedidoRegistro(sConexao: socket, nomeDesejado: str):
     """Solicita o registro do nome no servidor"""
