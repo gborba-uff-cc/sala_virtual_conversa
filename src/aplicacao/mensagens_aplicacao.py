@@ -1,5 +1,5 @@
 from enum import Enum
-from socket import socket
+from socket import SOCK_DGRAM, SOCK_STREAM, socket
 from typing import NamedTuple
 
 from src.util.transmissao import Transmissao
@@ -87,9 +87,82 @@ def fazPedidoEncerramento(sConexao: socket):
     return mensagemCompleta
 
 
-def recebePedidoOuResposta(sConexao):
+def recebePedidoOuResposta(socket):
     """Função padrão para receber o cabeçalho e o corpo de uma transmissão da aplicação"""
-    msgBytes = Transmissao.recebeBytes(sConexao)
-    msgStr = msgBytes.decode('UTF8')
-    cabecalho, _, corpo = msgStr.partition('\n')
+    cabecalho, corpo = ('', '')
+    if socket.type == SOCK_STREAM:
+        msgBytes = Transmissao.recebeBytes(socket)
+        msgStr = msgBytes.decode('UTF8')
+        cabecalho, _, corpo = msgStr.partition('\n')
+    elif socket.type == SOCK_DGRAM:
+        pass
     return (cabecalho, corpo)
+
+
+# NOTE - mensagens referentes a ligação na aplicação
+def fazPedidoConvite(
+        sUdpOrigem: socket,
+        destIp: str,
+        destPorta: str,
+        meuUserName: str,
+        meuIp: str,
+        minhaPorta: int):
+    """Envia o convite de ligação para o endereco de destino"""
+    raise NotImplementedError()
+    tipoCabecalho = MensagensLigacao.CONVITE
+    cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
+    # TODO - enviar as informações necessárias ao corpa da mensagem
+    corpo = f'\n{meuUserName}\n{meuIp}\n{minhaPorta}'
+    mensagemCompleta = f'{cabecalho}{corpo}'
+    Transmissao.enviaBytes_UdpTimeout(
+        socket=sUdpOrigem,
+        msg=mensagemCompleta.encode('UTF8'))
+
+
+def fazRespostaConvite(
+        sUdpOrigem: socket,
+        destIp: str,
+        destPorta: str,
+        conviteAceito: bool):
+    """Responde a solicitação do convite de ligação"""
+    raise NotImplementedError()
+    tipoCabecalho = MensagensLigacao.CONVITE_ACEITO if conviteAceito else MensagensLigacao.CONVITE_REJEITADO
+    cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
+    corpo = ''
+    mensagemCompleta = f'{cabecalho}{corpo}'
+    Transmissao.enviaBytes_UdpTimeout(
+        socket=sUdpOrigem,
+        msg=mensagemCompleta.encode('UTF8'))
+    return mensagemCompleta
+
+
+def fazPedidoEncerrarLigacao(
+        sUdpOrigem: socket,
+        destIp: str,
+        destPorta: str):
+    """Envia um aviso de encerramento da ligação"""
+    tipoCabecalho = MensagensLigacao.ENCERRAR_LIGACAO
+    cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
+    corpo = ''
+    mensagemCompleta = f'{cabecalho}{corpo}'
+    Transmissao.enviaBytes_UdpTimeout(
+        socket=sUdpOrigem,
+        msg=mensagemCompleta.encode('UTF8'))
+    return mensagemCompleta
+
+
+def enviaPacoteAudio(
+        sUdpOrigem: socket,
+        destIp: str,
+        destPorta: str,
+        bytesEnviar: bytes,
+        nPacote: int):
+    raise NotImplementedError()
+    tipoCabecalho = MensagensLigacao.PACOTE_AUDIO
+    cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'.encode('UTF-8')
+    corpo = f'\n{nPacote}\n'.encode('UTF-8') + bytesEnviar
+    mensagemCompleta = f'{cabecalho}{corpo}'
+    Transmissao.enviaBytes_Udp(
+        socket=sUdpOrigem,
+        msg=mensagemCompleta)
+    return mensagemCompleta
