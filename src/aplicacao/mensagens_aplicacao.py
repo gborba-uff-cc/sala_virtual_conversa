@@ -164,3 +164,22 @@ def enviaPacoteAudio(
         socket=sUdpOrigem,
         msg=mensagemCompleta)
     return mensagemCompleta
+
+
+def recebeMensagensUdp(sUdp) -> Tuple[str,int,str,Union[str, bytes]]:
+    """
+    Função padrão para receber o cabeçalho, o corpo, o endereco de origem, e a
+    porta de uma transmissão UDP da aplicação
+
+    Retorna: (endereco, porta, cabecalho, corpo)
+    """
+    endOrigem, portaOrigem, cabecalho, corpo = ('', 0, '', '')
+    if socket.type == SOCK_STREAM:
+        endOrigem, portaOrigem, msgBytes = Transmissao.recebeBytesUdp(socket)
+        if msgBytes.startswith(MensagensLigacao.PACOTE_AUDIO.value.cod.encode('UTF-8')):
+            cabecalho, _, corpo = msgBytes.partition(b'\n')
+            cabecalho = cabecalho.decode('UTF-8')
+        else:
+            msgStr = msgBytes.decode('UTF-8')
+            cabecalho, _, corpo = msgStr.partition('\n')
+    return (endOrigem, portaOrigem, cabecalho, corpo)
