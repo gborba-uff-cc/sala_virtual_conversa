@@ -51,8 +51,16 @@ class ClienteServidorLigacao():
                 destIp,
                 ClienteServidorLigacao.PORTA_SERVIDOR_LIGACAO,
                 meuUsername)
-        # NOTE - recebe a resposta do convite
-        _, _, cabecalho, corpo = ma.recebeMensagensUdp(self._sServidor)
+        try:
+            # NOTE - atribuindo um timeout de 400ms para o socket receber a resposta
+            self._sServidor.settimeout(0.400)
+            # NOTE - recebe a resposta do convite
+            _, _, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor)
+        except TimeoutError as te:
+            print(te)
+        finally:
+            # NOTE - removendo o timeout atribuido ao socket
+            self._sServidor.settimeout(0.400)
 
         # NOTE - se a chamada foi aceita atualiza o endereco do par da chamada
         if cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
