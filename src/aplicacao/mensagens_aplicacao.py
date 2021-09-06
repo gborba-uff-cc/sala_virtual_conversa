@@ -2,7 +2,7 @@ from enum import Enum
 from socket import socket
 from typing import NamedTuple, Tuple, Union
 
-from src.util.transmissao import Transmissao
+from src.util.transmissao import Transmissao, TransmissaoUdp
 
 
 class MensagemAplicacao(NamedTuple):
@@ -126,9 +126,12 @@ def fazPedidoConvite(
     # TODO - enviar as informações necessárias ao corpa da mensagem
     corpo = f'\n{meuUsername}'
     mensagemCompleta = f'{cabecalho}{corpo}'
-    Transmissao.enviaBytes_UdpTimeout(
-        socket=sUdp,
-        msg=mensagemCompleta.encode('UTF8'))
+    mensagemCompletaBytes = f'{cabecalho}{corpo}'.encode('UTF8')
+    TransmissaoUdp.enviaBytes(
+        sUdp,
+        destIp,
+        destPorta,
+        mensagemCompletaBytes)
     return mensagemCompleta
 
 def fazRespostaConvite(
@@ -141,9 +144,12 @@ def fazRespostaConvite(
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
     corpo = ''
     mensagemCompleta = f'{cabecalho}{corpo}'
-    Transmissao.enviaBytes_UdpTimeout(
-        socket=sUdp,
-        msg=mensagemCompleta.encode('UTF8'))
+    mensagemCompletaBytes = f'{cabecalho}{corpo}'.encode('UTF8')
+    TransmissaoUdp.enviaBytes(
+        sUdp,
+        destIp,
+        destPorta,
+        mensagemCompletaBytes)
     return mensagemCompleta
 
 
@@ -156,9 +162,12 @@ def fazPedidoEncerrarLigacao(
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
     corpo = ''
     mensagemCompleta = f'{cabecalho}{corpo}'
-    Transmissao.enviaBytes_UdpTimeout(
-        socket=sUdp,
-        msg=mensagemCompleta.encode('UTF8'))
+    mensagemCompletaBytes = f'{cabecalho}{corpo}'.encode('UTF8')
+    TransmissaoUdp.enviaBytes(
+        sUdp,
+        destIp,
+        destPorta,
+        mensagemCompletaBytes)
     return mensagemCompleta
 
 
@@ -172,13 +181,16 @@ def enviaPacoteAudio(
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'.encode('UTF-8')
     corpo = f'\n{nPacote}\n'.encode('UTF-8') + bytesEnviar
     mensagemCompleta = f'{cabecalho}{corpo}'
-    Transmissao.enviaBytes_Udp(
-        socket=sUdp,
-        msg=mensagemCompleta)
+    mensagemCompletaBytes = cabecalho + corpo
+    TransmissaoUdp.enviaBytes(
+        sUdp,
+        destIp,
+        destPorta,
+        mensagemCompletaBytes)
     return mensagemCompleta
 
 
-def recebeMensagensUdp(sUdp) -> Tuple[str,int,str,Union[str, bytes]]:
+def recebeMensagemUdp(sUdp: socket) -> Tuple[str,int,str,Union[str, Tuple[int, bytes]]]:
     """
     Função padrão para receber o cabeçalho, o corpo, o endereco de origem, e a
     porta de uma transmissão UDP da aplicação
@@ -186,9 +198,11 @@ def recebeMensagensUdp(sUdp) -> Tuple[str,int,str,Union[str, bytes]]:
     Retorna: (endereco, porta, cabecalho, corpo)
     """
     endOrigem, portaOrigem, cabecalho, corpo = ('', 0, '', '')
-    endOrigem, portaOrigem, msgBytes = Transmissao.recebeBytesUdp(socket)
+    endOrigem, portaOrigem, msgBytes = TransmissaoUdp.recebeBytes(sUdp)
     if msgBytes.startswith(MensagensLigacao.PACOTE_AUDIO.value.cod.encode('UTF-8')):
         cabecalho, _, corpo = msgBytes.partition(b'\n')
+        nPacote, _, audio = corpo.partition(b'\n')
+        corpo = (int(nPacote.decode('UTF-8')), audio)
         cabecalho = cabecalho.decode('UTF-8')
     else:
         msgStr = msgBytes.decode('UTF-8')
