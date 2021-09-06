@@ -115,7 +115,7 @@ class ClienteServidorLigacao():
         # (cliente e servidor compartilham a mesma thread)
         self._sServidor.setblocking(False)
         try:
-            endOrigem, portaOrigem, cabecalho, corpo = ma.recebeMensagensUdp(self._sServidor)
+            endOrigem, portaOrigem, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor)
 
             # NOTE - recebeu pedido de ligacao
             if cabecalho.startswith(ma.MensagensLigacao.CONVITE.value.cod):
