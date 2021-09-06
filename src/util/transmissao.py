@@ -1,4 +1,5 @@
 import socket
+from typing import Tuple
 
 class CaractereStuffing():
     """
@@ -83,3 +84,20 @@ class Transmissao():
                 raise RuntimeError("a conexão do socket foi quebrada")
             mensagemRecebida = b''.join((mensagemRecebida, pedaco))
         return CaractereStuffing.desfazCaractereStuffing(mensagemRecebida)
+
+
+class TransmissaoUdp():
+
+    _TAMANHO_BUFFER = 1024
+
+
+    @classmethod
+    def enviaBytes(cls, sUdp: socket.socket, destIp: str, destPorta: int, dados: bytes) -> None:
+        sUdp.sendto(dados, (destIp, destPorta))
+
+
+    @classmethod
+    def recebeBytes(cls, sUdp: socket.socket) -> Tuple[str, int, bytes]:
+        endereco, porta, dados = ('', 0, b'')
+        dados, (endereco, porta) = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
+        return (endereco, porta, dados)
