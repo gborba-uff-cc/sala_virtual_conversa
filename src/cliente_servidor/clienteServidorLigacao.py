@@ -38,6 +38,7 @@ class ClienteServidorLigacao():
 
     def realizaConvite(self, destIp: str, destPorta: int, meuUsername: str) -> Tuple[str, Tuple[str,str]]:
         enviado, recebido = ('', ('', ''))
+        cabecalho, corpo = ('', '')
 
         # NOTE - rejeita a invocacao se ja esta em chamada
         if self._emChamada:
@@ -66,12 +67,15 @@ class ClienteServidorLigacao():
         if cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
             self._endIpParLigacao = destIp
         else:
+            if not cabecalho.startswith(ma.MensagensLigacao.CONVITE_REJEITADO.value.cod):
+                # TODO - O que fazer se receber uma mensagem que não é uma resposta ao convite?
+                pass
             self._endIpParLigacao = ''
 
-        if isinstance(corpo, bytes):
-            return (enviado, (cabecalho, '<bytes>'))
-        else:
+        if isinstance(corpo, str):
             return (enviado, (cabecalho, corpo))
+        else:
+            return (enviado, (cabecalho, '<bytes>'))
 
     def realizaEncerramento(self, destIp: str) -> Tuple[str, Tuple[str,str]]:
         enviado, recebido = ('', ('', ''))
