@@ -90,12 +90,9 @@ def fazPedidoEncerramento(sConexao: socket):
 def recebePedidoOuResposta(socket):
     """Função padrão para receber o cabeçalho e o corpo de uma transmissão da aplicação"""
     cabecalho, corpo = ('', '')
-    if socket.type == SOCK_STREAM:
-        msgBytes = Transmissao.recebeBytes(socket)
-        msgStr = msgBytes.decode('UTF8')
-        cabecalho, _, corpo = msgStr.partition('\n')
-    elif socket.type == SOCK_DGRAM:
-        pass
+    msgBytes = Transmissao.recebeBytes(socket)
+    msgStr = msgBytes.decode('UTF8')
+    cabecalho, _, corpo = msgStr.partition('\n')
     return (cabecalho, corpo)
 
 
