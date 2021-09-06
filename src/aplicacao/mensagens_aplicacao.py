@@ -1,6 +1,6 @@
 from enum import Enum
-from socket import SOCK_DGRAM, SOCK_STREAM, socket
-from typing import NamedTuple
+from socket import socket
+from typing import NamedTuple, Tuple, Union
 
 from src.util.transmissao import Transmissao
 
