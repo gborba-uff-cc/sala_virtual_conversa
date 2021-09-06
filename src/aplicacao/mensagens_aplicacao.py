@@ -101,18 +101,16 @@ def recebePedidoOuResposta(socket):
 
 # NOTE - mensagens referentes a ligação na aplicação
 def fazPedidoConvite(
-        sUdpOrigem: socket,
+        sUdp: socket,
         destIp: str,
-        destPorta: str,
-        meuUserName: str,
-        meuIp: str,
-        minhaPorta: int):
+        destPorta: int,
+        meuUsername: str):
     """Envia o convite de ligação para o endereco de destino"""
     raise NotImplementedError()
     tipoCabecalho = MensagensLigacao.CONVITE
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
     # TODO - enviar as informações necessárias ao corpa da mensagem
-    corpo = f'\n{meuUserName}\n{meuIp}\n{minhaPorta}'
+    corpo = f'\n{meuUsername}'
     mensagemCompleta = f'{cabecalho}{corpo}'
     Transmissao.enviaBytes_UdpTimeout(
         socket=sUdpOrigem,
@@ -120,9 +118,9 @@ def fazPedidoConvite(
 
 
 def fazRespostaConvite(
-        sUdpOrigem: socket,
+        sUdp: socket,
         destIp: str,
-        destPorta: str,
+        destPorta: int,
         conviteAceito: bool):
     """Responde a solicitação do convite de ligação"""
     raise NotImplementedError()
@@ -137,9 +135,9 @@ def fazRespostaConvite(
 
 
 def fazPedidoEncerrarLigacao(
-        sUdpOrigem: socket,
+        sUdp: socket,
         destIp: str,
-        destPorta: str):
+        destPorta: int):
     """Envia um aviso de encerramento da ligação"""
     tipoCabecalho = MensagensLigacao.ENCERRAR_LIGACAO
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
@@ -152,9 +150,9 @@ def fazPedidoEncerrarLigacao(
 
 
 def enviaPacoteAudio(
-        sUdpOrigem: socket,
+        sUdp: socket,
         destIp: str,
-        destPorta: str,
+        destPorta: int,
         bytesEnviar: bytes,
         nPacote: int):
     raise NotImplementedError()
