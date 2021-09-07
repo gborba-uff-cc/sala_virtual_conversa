@@ -20,11 +20,11 @@ class MensagensAplicacao(Enum):
     ENCERRAMENTO = MensagemAplicacao('7', 'PEDIDO ENCERRAMENTO')
 
 class MensagensLigacao(Enum):
-    CONVITE = MensagemAplicacao('','PEDIDO CONVITE')
-    CONVITE_ACEITO = MensagemAplicacao('','CONVITE ACEITO')
-    CONVITE_REJEITADO = MensagemAplicacao('','CONVITE REJEITADO')
-    ENCERRAR_LIGACAO = MensagemAplicacao('','ENCERRAR LIGACAO')
-    PACOTE_AUDIO = MensagemAplicacao('','PACOTE AUDIO')
+    CONVITE = MensagemAplicacao('1','PEDIDO CONVITE')
+    CONVITE_ACEITO = MensagemAplicacao('2','CONVITE ACEITO')
+    CONVITE_REJEITADO = MensagemAplicacao('3','CONVITE REJEITADO')
+    ENCERRAR_LIGACAO = MensagemAplicacao('4','ENCERRAR LIGACAO')
+    PACOTE_AUDIO = MensagemAplicacao('5','PACOTE AUDIO')
 
 def fazPedidoRegistro(sConexao: socket, nomeDesejado: str, portaUdpDesejada: int):
     """Solicita o registro do nome no servidor"""
