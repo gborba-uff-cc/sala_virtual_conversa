@@ -250,8 +250,8 @@ class Servidor():
         registrou = False
         _, corpo = cabecalhoCorpo
         if corpo:
-            nome = corpo
-            registrou = self.cadastraCliente(nome, *enderecoCliente)
+            nome, _, porta = corpo.partition('\n')
+            registrou = self.cadastraCliente(nome, enderecoCliente[0], int(porta))
         else:
             registrou = False
 
@@ -276,11 +276,13 @@ class Servidor():
                     encontrado), ip=encontrado.ip, porta=encontrado.porta)
             self._escreveLog(retorno, escreverEmLog=True)
 
-    def processaEncerramento(self, enderecoCliente: Tuple[str, int]):
+    def processaEncerramento(self, cabecalhoCorpo: Tuple[str, str], enderecoCliente: Tuple[str, int]):
         """
         Manipula a mensagem de encerramento do cliente
         """
-        self.descadastraCliente(*enderecoCliente)
+        _, corpo = cabecalhoCorpo
+        porta = corpo
+        self.descadastraCliente(enderecoCliente[0],porta)
 
 # ==============================================================================
 # NOTE - montando o processador de conexões do servidor
@@ -414,9 +416,10 @@ class ProcessadorRequisicoes():
     @classmethod
     def servidorProcessaEncerramento(cls, *args, **kwargs):
         maquinaEstados: MaquinaEstados = kwargs['maquinaEstados']
+        msg: Tuple[str, str] = kwargs['strMsg'].data
         servidor: Servidor = kwargs['servidor']
         enderecoCliente: Tuple[str, int] = kwargs['enderecoCliente']
 
-        servidor.processaEncerramento(enderecoCliente=enderecoCliente)
+        servidor.processaEncerramento(cabecalhoCorpo=msg, enderecoCliente=enderecoCliente)
 
         maquinaEstados.processaSinal(PossiveisEstadosMaquina.FINALIZADO)

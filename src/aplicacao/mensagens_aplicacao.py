@@ -26,11 +26,11 @@ class MensagensLigacao(Enum):
     ENCERRAR_LIGACAO = MensagemAplicacao('','ENCERRAR LIGACAO')
     PACOTE_AUDIO = MensagemAplicacao('','PACOTE AUDIO')
 
-def fazPedidoRegistro(sConexao: socket, nomeDesejado: str):
+def fazPedidoRegistro(sConexao: socket, nomeDesejado: str, portaUdpDesejada: int):
     """Solicita o registro do nome no servidor"""
     tipoCabecalho = MensagensAplicacao.REGISTO
     cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
-    corpo = '\n' + nomeDesejado
+    corpo = '\n' + nomeDesejado + '\n' + str(portaUdpDesejada)
     mensagemCompleta = cabecalho + corpo
     Transmissao.enviaBytes(
         socket=sConexao,
@@ -75,11 +75,11 @@ def fazRespostaPedidoConsulta(sConexao, encontrou: bool, ip: str = '', porta: st
     return mensagemCompleta
 
 
-def fazPedidoEncerramento(sConexao: socket):
+def fazPedidoEncerramento(sConexao: socket, porta: int):
     """Clinte informa que quer encerrar a conexão com o servidor"""
     tipoCabecalho = MensagensAplicacao.ENCERRAMENTO
     cabecalho = tipoCabecalho.value.cod + ' ' + tipoCabecalho.value.description
-    corpo = ''
+    corpo = '\n' + str(porta)
     mensagemCompleta = cabecalho + corpo
     Transmissao.enviaBytes(
         socket=sConexao,

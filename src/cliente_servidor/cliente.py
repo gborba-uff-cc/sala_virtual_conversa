@@ -23,7 +23,7 @@ class Cliente():
             raise InvalidIpError
 
 
-    def realizaPedidoRegistro(self, nomeDesejado: str):
+    def realizaPedidoRegistro(self, nomeDesejado: str, portaUdp: int):
         """
         Envia ao servidor uma mensagem de REGISTRO para o nome desejado;
         Recebe a resposta do servidor;
@@ -36,7 +36,7 @@ class Cliente():
         """
         if not self._socketConectado:
             return ('', ('', ''))
-        enviado = ma.fazPedidoRegistro(self._socketConexao, nomeDesejado)
+        enviado = ma.fazPedidoRegistro(self._socketConexao, nomeDesejado, portaUdp)
         recebido = ma.recebePedidoOuResposta(self._socketConexao)
         return (enviado, recebido)
 
@@ -57,7 +57,7 @@ class Cliente():
         recebido = ma.recebePedidoOuResposta(self._socketConexao)
         return (enviado, recebido)
 
-    def realizaPedidoEncerramento(self):
+    def realizaPedidoEncerramento(self, portaUdp: int):
         """
         Envia ao servidor uma mensagem de ENCERRAMENTO para o nome desejado;
         Não recebe resposta do servidor (servidor não precisa responder mensagem
@@ -65,7 +65,7 @@ class Cliente():
         """
         if not self._socketConectado:
             return ('', ('', ''))
-        enviado = ma.fazPedidoEncerramento(self._socketConexao)
+        enviado = ma.fazPedidoEncerramento(self._socketConexao, portaUdp)
         self._socketConexao.close()
         self._socketConectado = False
         return enviado
