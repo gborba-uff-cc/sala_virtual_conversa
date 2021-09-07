@@ -180,7 +180,7 @@ def enviaPacoteAudio(
     tipoCabecalho = MensagensLigacao.PACOTE_AUDIO
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'.encode('UTF-8')
     corpo = f'\n{nPacote}\n'.encode('UTF-8') + bytesEnviar
-    mensagemCompleta = f'{cabecalho}{corpo}'
+    mensagemCompleta = f'{cabecalho}\n<bytes>'
     mensagemCompletaBytes = cabecalho + corpo
     TransmissaoUdp.enviaBytes(
         sUdp,
