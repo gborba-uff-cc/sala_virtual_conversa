@@ -90,14 +90,22 @@ class TransmissaoUdp():
 
     _TAMANHO_BUFFER = 1024
 
-
     @classmethod
     def enviaBytes(cls, sUdp: socket.socket, destIp: str, destPorta: int, dados: bytes) -> None:
-        sUdp.sendto(dados, (destIp, destPorta))
-
+        totalEnviado = 0
+        while totalEnviado < len(dados):
+            enviado = sUdp.sendto(dados, (destIp, destPorta))
+            if enviado == 0:
+                raise RuntimeError("a conexão do socket foi quebrada")
+            totalEnviado = totalEnviado + enviado
 
     @classmethod
     def recebeBytes(cls, sUdp: socket.socket) -> Tuple[str, int, bytes]:
         endereco, porta, dados = ('', 0, b'')
-        dados, (endereco, porta) = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
+        pedaco, (endereco, porta) = sUdp.recvfrom(
+            TransmissaoUdp._TAMANHO_BUFFER)
+        dados = b''.join((b'', pedaco))
+        while pedaco != b'':
+            pedaco, _ = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
+            dados = b''.join((dados, pedaco))
         return (endereco, porta, dados)
