@@ -92,6 +92,7 @@ class TransmissaoUdp():
 
     @classmethod
     def enviaBytes(cls, sUdp: socket.socket, destIp: str, destPorta: int, dados: bytes) -> None:
+        # print(f'>>>{destIp}:{destPorta}')
         totalEnviado = 0
         while totalEnviado < len(dados):
             enviado = sUdp.sendto(dados, (destIp, destPorta))
@@ -102,10 +103,13 @@ class TransmissaoUdp():
     @classmethod
     def recebeBytes(cls, sUdp: socket.socket) -> Tuple[str, int, bytes]:
         endereco, porta, dados = ('', 0, b'')
-        pedaco, (endereco, porta) = sUdp.recvfrom(
-            TransmissaoUdp._TAMANHO_BUFFER)
+        pedaco, (endereco, porta) = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
+        # print(f'<<<{endereco}:{porta}')
         dados = b''.join((b'', pedaco))
-        while pedaco != b'':
-            pedaco, _ = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
-            dados = b''.join((dados, pedaco))
+        try:
+            while pedaco != b'':
+                pedaco, _ = sUdp.recvfrom(TransmissaoUdp._TAMANHO_BUFFER)
+                dados = b''.join((dados, pedaco))
+        except BlockingIOError as be:
+            pass
         return (endereco, porta, dados)

@@ -3,6 +3,7 @@ import threading
 from enum import Enum
 from io import SEEK_END, StringIO
 from typing import Dict, NamedTuple, Tuple, Union
+from time import sleep
 
 import src.aplicacao.mensagens_aplicacao as ma
 from src.util.caixa import Caixa
@@ -108,6 +109,7 @@ class Servidor():
                         escreverEmStdOut=True, escreverEmLog=True)
         self._escreveLog('Esperando uma nova conexao...', escreverEmStdOut=True)
         while self._aceitandoConexoes:
+            sleep(0.25)
             try:
                 socketConexao, enderecoCliente = self._socket.accept()
                 self._escreveLog('\nNova conexão de: {}'.format(

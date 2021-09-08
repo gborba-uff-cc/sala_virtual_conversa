@@ -13,6 +13,7 @@
 
 import errno
 import socket
+import sys
 import src.aplicacao.mensagens_aplicacao as ma
 from src.util.mutex import Mutex
 import threading
@@ -30,34 +31,33 @@ class ClienteServidorLigacao():
     _PORTA_PREFERENCIAL_SERVIDOR = 6000
 
     def __init__(self):
-        # self._sCliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # self._sServidor.bind(('localhost', ClienteServidorLigacao._PORTA_SERVIDOR_LIGACAO))
 
     # NOTE - propriedades compartilhadas entre threads =========================
         # NOTE - socket.AF_INET -> familia de enderecos IPv4
         # NOTE - socket.AF_INET6 -> familia de enderecos IPv6
         # NOTE - socket.SOCK_STREAM -> socket do tipo TCP
         # NOTE - socket.SOCK_DGRAM -> socket do tipo UDP
-        self._sCliente = Mutex(socket.socket(
-                socket.AF_INET, socket.SOCK_DGRAM))
-        self._sServidor = Mutex(socket.socket(
-                socket.AF_INET, socket.SOCK_DGRAM))
-        with self._sServidor.lock:
-            if isinstance(self._sServidor.data, socket.socket):
-                for tentativa in range(51):
-                    if tentativa >= 50:
-                        raise RuntimeError('Não foi possivel (criar o/fazer bind do) socket UDP para o servidor')
-                    try:
-                        self._sServidor.data.bind((
-                                'localhost',
-                                ClienteServidorLigacao._PORTA_PREFERENCIAL_SERVIDOR + tentativa))
-                        # NOTE - armazena o endereco e porta do servidor
-                        self._endServidor: Tuple[str,int] = self._sServidor.data.getsockname()
-                        break
-                    except OSError as oe:
-                        # NOTE - Address already in use
-                        if oe.errno == errno.EADDRINUSE:
-                            pass
+        self._sCliente = Mutex(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
+        sE = None
+        sS = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        for tentativa in range(51):
+            if tentativa >= 50:
+                raise RuntimeError('Não foi possivel fazer o socket UDP para o servidor')
+            try:
+                nPorta = ClienteServidorLigacao._PORTA_PREFERENCIAL_SERVIDOR + tentativa
+                sS.bind(('localhost',nPorta))
+                # NOTE - armazena o endereco e porta do servidor
+                sE = sS.getsockname()
+                break
+            except OSError as oe:
+                # NOTE - Address already in use
+                if oe.errno == errno.EADDRINUSE:
+                    pass
+        if isinstance(sS, socket.socket) and isinstance(sE, tuple):
+            self._sServidor = Mutex(sS)
+            self._endServidor: Tuple[str,int] = sE
+        else:
+            sys.exit(1)
         self._emChamada: Mutex = Mutex(False)
         self._recebendoChamada: Mutex = Mutex(False)
         self._realizandoChamada: Mutex = Mutex(False)
@@ -67,8 +67,8 @@ class ClienteServidorLigacao():
         self._infoChamadaEstabelecida: InformacaoPar = InformacaoPar('',0,'')
         self._infoChamadaRecebida: InformacaoPar = InformacaoPar('',0,'')
         self._infoChamadaRealizada: InformacaoPar = InformacaoPar('',0,'')
-        # NOTE - thread do servidor que irá ser encerrada junto com a principal
         self._executaServidor: bool = True
+        # NOTE - thread do servidor que irá ser encerrada junto com a principal
         self._threadServidor: threading.Thread = threading.Thread(
                 target=self._manipulaMensagens,
                 daemon=True)
@@ -79,216 +79,29 @@ class ClienteServidorLigacao():
         # irem para a rede
         self._audioBuffer_entrada: Deque = Deque([], maxlen=50)
 
+    @property
+    def infoChamadaEstabelecida(self):
+        return self._infoChamadaEstabelecida
 
-    # @property
-    # def log(self) -> Mutex:
-    #     """
-    #     Retorna o log das mensagens sobre as ligacoes que foram trocadas
+    @property
+    def infoChamadaRecebida(self):
+        return self._infoChamadaRecebida
 
-    #     A função/método que utilizar esse método deverá realizar o acquire e
-    #     release do lock
-    #     """
-    #     return self._log
-
-    # def clearLog(self):
-    #     """
-    #     A função/método que utilizar esse método deverá realizar o acquire e
-    #     release do lock
-    #     """
-    #     self._log
-
-# NOTE - métodos do cliente
-    # def realizaConvite(self, destIp: str, destPorta: int, meuUsername: str) -> Tuple[str, Tuple[str,str]]:
-    #     enviado, recebido = ('', ('', ''))
-    #     cabecalho, corpo = ('', '')
-
-    # # NOTE - rejeita a invocacao se ja esta em chamada
-    #     with self._emChamada.lock:
-    #         if isinstance(self._emChamada.data, bool):
-    #             if self._emChamada.data:
-    #                 # print('já existe uma chamada em andamento')
-    #                 recebido = (f'{ma.MensagensLigacao.CONVITE_REJEITADO.value.cod} {ma.MensagensLigacao.CONVITE_REJEITADO.value.description}', '')
-    #                 self._escreveNoLog(enviado, '')
-    #                 return (enviado, recebido)
-
-    # # NOTE - Envia um convite para uma chamada
-    #     with self._sCliente.lock, self._realizandoChamada.lock:
-    #         if isinstance(self._sCliente.data, socket.socket):
-    #             enviado = ma.fazPedidoConvite(
-    #                     self._sCliente.data,
-    #                     destIp,
-    #                     destPorta,
-    #                     meuUsername)
-    #             self._realizandoChamada.data = True
-    #             self._infoChamadaRealizada = (destIp, destPorta)
-    #     # TODO - criar função para saber se a chamada foi aceita ou não
-    #     # FIXME - a transmisssão ainda não funciona com acks então dessincronizações podem acontecer
-    #     with self._sServidor.lock:
-    #         if isinstance(self._sServidor.data, socket.socket):
-    #             try:
-    #                 # NOTE - atribuindo um timeout de 400ms para o socket receber a resposta
-    #                 self._sServidor.data.settimeout(0.400)
-    #                 # NOTE - recebe a resposta do convite
-    #                 _, _, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor.data)
-    #             except TimeoutError as te:
-    #                 print(te)
-    #             finally:
-    #                 # NOTE - removendo o timeout atribuido ao socket
-    #                 self._sServidor.data.settimeout(None)
-
-    # # NOTE - se a chamada foi aceita atualiza propriedades
-    #     if cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
-    #         self._infoChamadaEstabelecida = (destIp, destPorta)
-    #         with self._emChamada.lock:
-    #             if isinstance(self._emChamada.data, bool):
-    #                 self._emChamada.data = True
-    #     else:
-    #         if not cabecalho.startswith(ma.MensagensLigacao.CONVITE_REJEITADO.value.cod):
-    #             # TODO - O que fazer se receber uma mensagem que não é uma resposta ao convite?
-    #             pass
-    #         self._infoChamadaEstabelecida = ('',0)
-
-    #     # if isinstance(corpo, str):
-    #     #     return (enviado, (cabecalho, corpo))
-    #     # else:
-    #     #     return (enviado, (cabecalho, '<bytes>'))
-
-    #     if not isinstance(corpo, str):
-    #         corpo = '<bytes>'
-
-    #     # NOTE - ASCII chr(10) = '\n'
-    #     self._escreveNoLog(enviado, f'{cabecalho}{chr(10) if corpo else ""}{corpo}')
-    #     return (enviado, (cabecalho, corpo))
-
-    def realizaConvite(self, destIp: str, destPorta: int, destUsername: str ,meuUsername: str) -> Tuple[str, Tuple[str,str]]:
-        enviado, recebido = ('', ('', ''))
-        cabecalho, corpo = ('', '')
-
-    # NOTE - rejeita a invocacao se ja esta em chamada
-        with self._emChamada.lock:
-            if isinstance(self._emChamada.data, bool):
-                if self._emChamada.data:
-                    # print('já existe uma chamada em andamento')
-                    recebido = (f'{ma.MensagensLigacao.CONVITE_REJEITADO.value.cod} {ma.MensagensLigacao.CONVITE_REJEITADO.value.description}', '')
-                    self._escreveNoLog(enviado, '')
-                    return (enviado, recebido)
-
-    # NOTE - Envia um convite para uma chamada
-        with self._sCliente.lock, self._realizandoChamada.lock:
-            if isinstance(self._sCliente.data, socket.socket):
-                enviado = ma.fazPedidoConvite(
-                        self._sCliente.data,
-                        destIp,
-                        destPorta,
-                        meuUsername)
-                self._realizandoChamada.data = True
-                self._infoChamadaRealizada = InformacaoPar(destIp, destPorta, destUsername)
-        return (enviado, (cabecalho, corpo))
-
-        # TODO - criar função para saber se a chamada foi aceita ou não
-        # FIXME - a transmisssão ainda não funciona com acks então dessincronizações podem acontecer
-        with self._sServidor.lock:
-            if isinstance(self._sServidor.data, socket.socket):
-                try:
-                    # NOTE - atribuindo um timeout de 400ms para o socket receber a resposta
-                    self._sServidor.data.settimeout(0.400)
-                    # NOTE - recebe a resposta do convite
-                    _, _, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor.data)
-                except TimeoutError as te:
-                    print(te)
-                finally:
-                    # NOTE - removendo o timeout atribuido ao socket
-                    self._sServidor.data.settimeout(None)
-
-    # NOTE - se a chamada foi aceita atualiza propriedades
-        if cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
-            self._infoChamadaEstabelecida = (destIp, destPorta)
-            with self._emChamada.lock:
-                if isinstance(self._emChamada.data, bool):
-                    self._emChamada.data = True
-        else:
-            if not cabecalho.startswith(ma.MensagensLigacao.CONVITE_REJEITADO.value.cod):
-                # TODO - O que fazer se receber uma mensagem que não é uma resposta ao convite?
-                pass
-            self._infoChamadaEstabelecida = ('',0)
-
-        # if isinstance(corpo, str):
-        #     return (enviado, (cabecalho, corpo))
-        # else:
-        #     return (enviado, (cabecalho, '<bytes>'))
-
-        if not isinstance(corpo, str):
-            corpo = '<bytes>'
-
-        # NOTE - ASCII chr(10) = '\n'
-        self._escreveNoLog(enviado, f'{cabecalho}{chr(10) if corpo else ""}{corpo}')
-        return (enviado, (cabecalho, corpo))
-
-
-    def respondeConvite(self, atende: bool):
-        # TODO -
-        if atende:
-            self._infoChamadaEstabelecida = self._infoChamadaRecebida
-        with self._sCliente.lock:
-            self._infoChamadaRecebida = InformacaoPar('',0,'')
-            if isinstance(self._sCliente.data, socket.socket):
-                ma.fazRespostaConvite(self._sCliente.data, self._infoChamadaRecebida.ip, self._infoChamadaRecebida.porta, atende)
-        with self._recebendoChamada.lock:
-            if isinstance(self._recebendoChamada.data, bool):
-                self._recebendoChamada.data = False
-
-
-    # def realizaEncerramento(self, destIp: str) -> Tuple[str, Tuple[str,str]]:
-    def realizaEncerramento(self) -> Tuple[str, Tuple[str,str]]:
-        enviado, recebido = ('', ('', ''))
-
-        with self._sCliente.lock:
-            if isinstance(self._sCliente.data, socket.socket):
-                # NOTE - envia um aviso de encerramento da chamada
-                # enviado = ma.fazPedidoEncerrarLigacao(
-                #         self._sCliente.data,
-                #         self._endParLigacao,
-                #         ClienteServidorLigacao._PORTA_SERVIDOR_LIGACAO)
-                enviado = ma.fazPedidoEncerrarLigacao(
-                        self._sCliente.data,
-                        self._infoChamadaEstabelecida.ip,
-                        self._infoChamadaEstabelecida.porta)
-
-        # NOTE - encerra a ligacao
-        with self._emChamada.lock:
-            if isinstance(self._emChamada, bool):
-                self._emChamada.data = False
-        return (enviado, recebido)
-
-
-    def enviaPacoteAudio(self, destPorta: int, nSeqAudio: int ,bytesAudio: bytes) -> Tuple[str, Tuple[str,str]]:
-        enviado, recebido = ('', ('', ''))
-
-        with self._sCliente.lock:
-            if isinstance(self._sCliente.data, socket.socket):
-                # enviado = ma.enviaPacoteAudio(
-                #         self._sCliente.data,
-                #         self._infoChamadaEstabelecida,
-                #         ClienteServidorLigacao._PORTA_SERVIDOR_LIGACAO,
-                #         bytesAudio,
-                #         nSeqAudio)
-                enviado = ma.enviaPacoteAudio(
-                        self._sCliente.data,
-                        self._infoChamadaEstabelecida.ip,
-                        self._infoChamadaEstabelecida.porta,
-                        bytesAudio,
-                        nSeqAudio)
-
-        return (enviado, recebido)
-
+    @property
+    def infoChamadaRealizada(self):
+        return self._infoChamadaRealizada
 
     @property
     def enderecoAtualServidorUdp(self):
         return self._endServidor
 
-    # @property
-    # def enderecoParLigacao(self):
-    #     return self._endParLigacao_endParLigacaoEstabelecida
+    @property
+    def emChamada(self):
+        """
+        A função/método que utilizar esse método deverá realizar o acquire e
+        release do lock
+        """
+        return self._emChamada
 
     @property
     def log(self) -> Mutex:
@@ -309,16 +122,102 @@ class ClienteServidorLigacao():
         """
         self._log.data = []
 
-
     @property
     def bufferAudio_Recebido(self) -> Deque:
         return self._audioBuffer_entrada
-
 
     @property
     def bufferAudio_Envio(self) -> Deque:
         return self._audioBuffer_saida
 
+    def realizaConvite(self, destIp: str, destPorta: int, destUsername: str, meuUsername: str) -> Tuple[str, Tuple[str, str]]:
+        destIp = destIp if destIp else 'localhost'
+        enviado, recebido = ('', ('', ''))
+        cabecalho, corpo = ('', '')
+
+    # NOTE - rejeita a invocacao se ja esta em chamada
+        with self._emChamada.lock:
+            if isinstance(self._emChamada.data, bool):
+                destIp = socket.gethostbyname(destIp)
+                print(f'{self._emChamada.data} or {(destIp, destPorta)} == {(self._endServidor)}')
+                # NOTE - ou se esta tentando ligar para si mesmo
+                if self._emChamada.data or (destIp, destPorta) == (self._endServidor):
+                    cabecalho = f'{ma.MensagensLigacao.CONVITE_REJEITADO.value.cod} {ma.MensagensLigacao.CONVITE_REJEITADO.value.description}'
+                    recebido = (cabecalho, '')
+                    self._escreveNoLog(enviado=enviado, recebido=cabecalho)
+                    return (enviado, recebido)
+
+    # NOTE - Envia um convite para uma chamada
+        with self._sCliente.lock, self._realizandoChamada.lock:
+            if isinstance(self._sCliente.data, socket.socket):
+                enviado = ma.fazPedidoConvite(
+                        self._sCliente.data,
+                        destIp,
+                        destPorta,
+                        meuUsername,
+                        self.enderecoAtualServidorUdp[1])
+                self._realizandoChamada.data = True
+                self._infoChamadaRealizada = InformacaoPar(destIp, destPorta, destUsername)
+
+        self._escreveNoLog(enviado=enviado, recebido='')
+        return (enviado, (cabecalho, corpo))
+
+
+    def respondeConvite(self, atende: bool):
+        enviado, recebido = ('', ('', ''))
+
+        if atende:
+            self._infoChamadaEstabelecida = self._infoChamadaRecebida
+            # NOTE - inicia a ligacao
+            with self._emChamada.lock:
+                if isinstance(self._emChamada.data, bool):
+                    self._emChamada.data = True
+
+        with self._sCliente.lock:
+            if isinstance(self._sCliente.data, socket.socket):
+                enviado = ma.fazRespostaConvite(self._sCliente.data, self._infoChamadaRecebida.ip, self._infoChamadaRecebida.porta, atende)
+            self._infoChamadaRecebida = InformacaoPar('',0,'')
+
+        with self._recebendoChamada.lock:
+            if isinstance(self._recebendoChamada.data, bool):
+                self._recebendoChamada.data = False
+
+        self._escreveNoLog(enviado=enviado, recebido='')
+        return (enviado, recebido)
+
+    def realizaEncerramento(self) -> Tuple[str, Tuple[str,str]]:
+        enviado, recebido = ('', ('', ''))
+
+        with self._sCliente.lock:
+            if isinstance(self._sCliente.data, socket.socket):
+                enviado = ma.fazPedidoEncerrarLigacao(
+                        self._sCliente.data,
+                        self._infoChamadaEstabelecida.ip,
+                        self._infoChamadaEstabelecida.porta)
+
+        # NOTE - encerra a ligacao
+        with self._emChamada.lock:
+            if isinstance(self._emChamada.data, bool):
+                self._emChamada.data = False
+
+        self._escreveNoLog(enviado=enviado, recebido='')
+        return (enviado, recebido)
+
+
+    def enviaPacoteAudio(self, nSeqAudio: int ,bytesAudio: bytes) -> Tuple[str, Tuple[str,str]]:
+        enviado, recebido = ('', ('', ''))
+
+        with self._sCliente.lock:
+            if isinstance(self._sCliente.data, socket.socket):
+                enviado = ma.enviaPacoteAudio(
+                        self._sCliente.data,
+                        self._infoChamadaEstabelecida.ip,
+                        self._infoChamadaEstabelecida.porta,
+                        bytesAudio,
+                        nSeqAudio)
+
+        self._escreveNoLog(enviado=enviado, recebido='')
+        return (enviado, recebido)
 
     def fechaSockets(self):
         """
@@ -343,6 +242,7 @@ class ClienteServidorLigacao():
         Se for necessário usar as strings do retorno, um teste booleano deve ser
         feito para saber se as strings existem
         """
+
         while self._executaServidor:
             endOrigem, portaOrigem, cabecalho, corpo = ('', 0, '', '')
 
@@ -358,14 +258,15 @@ class ClienteServidorLigacao():
                     try:
                         # NOTE - le do socket
                         endOrigem, portaOrigem, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor.data)
+
                     except BlockingIOError as be:
                         pass
                     finally:
                         self._sServidor.data.setblocking(socketBloqueante)
-                        # return ('',('',''))
+                    # endOrigem, portaOrigem, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor.data)
 
         # ======================================================================
-        # NOTE - recebeu pedido de ligacao
+        # NOTE - recebeu convite de chamada
             if cabecalho.startswith(ma.MensagensLigacao.CONVITE.value.cod):
                 with self._sCliente.lock, self._emChamada.lock, self._recebendoChamada.lock:
                         if isinstance(self._sCliente.data, socket.socket) and \
@@ -373,37 +274,22 @@ class ClienteServidorLigacao():
                                 isinstance(self._recebendoChamada.data, bool):
                             # NOTE - recusa a nova chamada se já estou em chamada, ou
                             # se estou no processo de aceitar a chamada de outro usuario
-                            if self._emChamada.data or self._infoChamadaRecebida != (endOrigem, portaOrigem):
+                            if self._emChamada.data or (
+                                    self._infoChamadaRecebida != InformacaoPar('',0,'') and
+                                    self._infoChamadaRecebida != (endOrigem, portaOrigem)):
                                 ma.fazRespostaConvite(self._sCliente.data, endOrigem, portaOrigem, False)
                             else:
                                 if not self._recebendoChamada.data and isinstance(corpo, str):
                                     self._recebendoChamada.data = True
-                                    self._infoChamadaRecebida = InformacaoPar(endOrigem, portaOrigem,corpo)
+                                    nome, _, porta = corpo.partition('\n')
+                                    self._infoChamadaRecebida = InformacaoPar(endOrigem, int(porta), nome)
 
         # ======================================================================
-        # # NOTE - recebeu pedido de ligacao
-        #     if cabecalho.startswith(ma.MensagensLigacao.CONVITE.value.cod):
-        #         # NOTE - recusa a nova chamada se já estou em chamada, ou
-        #         # recusa se estou no processo de aceitar a chamada de outro usuario
-
-        #         if self._emChamada.data or self._infoChamadaRecebida != (endOrigem, portaOrigem):
-        #             with self._sCliente.lock:
-        #                 if isinstance(self._sCliente.data, socket.socket):
-        #                     ma.fazRespostaConvite(self._sCliente.data, endOrigem, portaOrigem, False)
-        #         else:
-        #             with self._recebendoChamada.lock:
-        #                 if not self._recebendoChamada.data:
-        #                     self._recebendoChamada.data = True
-        #                     self._infoChamadaRecebida = (endOrigem, portaOrigem)
-
-                # if isinstance(corpo, str):
-                #     return ('',(cabecalho,corpo))
-
-        # ======================================================================
-        # NOTE - recebeu respota da chamada e foi aceita
+        # NOTE - recebeu resposta da chamada e foi aceita
             elif cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
-                with self._realizandoChamada.lock, self._emChamada.lock:
+                with self._emChamada.lock, self._realizandoChamada.lock:
                     if isinstance(self._realizandoChamada.data, bool) and isinstance(self._emChamada.data, bool):
+                        print(f'{self._realizandoChamada.data} and {endOrigem} == {self._infoChamadaRealizada[0]}')
                         if self._realizandoChamada.data and endOrigem == self._infoChamadaRealizada[0]:
                             self._infoChamadaEstabelecida = self._infoChamadaRealizada
                             self._infoChamadaRealizada = InformacaoPar('',0,'')
@@ -411,9 +297,9 @@ class ClienteServidorLigacao():
                             self._realizandoChamada.data = False
 
         # ======================================================================
-        # NOTE - recebeu respota da chamada e foi rejeitada
+        # NOTE - recebeu resposta da chamada e foi rejeitada
             elif cabecalho.startswith(ma.MensagensLigacao.CONVITE_REJEITADO.value.cod):
-                with self._realizandoChamada.lock:
+                with self._emChamada.lock, self._realizandoChamada.lock:
                     if isinstance(self._realizandoChamada.data, bool):
                         if self._realizandoChamada.data and endOrigem == self._infoChamadaRealizada[0]:
                             self._realizandoChamada.data = False
@@ -428,7 +314,6 @@ class ClienteServidorLigacao():
                     with self._emChamada.lock:
                         if isinstance(self._emChamada.data, bool):
                             self._emChamada.data = False
-                # return ('',(cabecalho,''))
                 corpo = ''
 
         # ======================================================================
@@ -439,7 +324,6 @@ class ClienteServidorLigacao():
                         # NOTE - adiciona o pacote de audio no buffer
                         if self._emChamada.data:
                             self._audioBuffer_entrada.append(corpo)
-                # return ('',(cabecalho,'<bytes>'))
                 corpo = '<bytes>'
 
         # ======================================================================
@@ -447,16 +331,13 @@ class ClienteServidorLigacao():
             else:
                 # TODO - tratar mensagem invalida
                 pass
-                # return ('',('',''))
 
-            # return ('',('',''))
             self._escreveNoLog('', f'{cabecalho}{chr(10) if corpo else ""}{corpo}')
-            # return ('',(cabecalho,corpo))
 
     def _escreveNoLog(self, enviado: str, recebido: str) -> None:
         with self._log.lock:
             if isinstance(self._log.data, list):
                 if enviado:
-                    self._log.data.append(f'mod.lig.R: {enviado}')
+                    self._log.data.append(f'[mod.lig.E] >>> {enviado}')
                 if recebido:
-                    self._log.data.append(f'mod.lig.E: {recebido}')
+                    self._log.data.append(f'[mod.lig.R] >>> {recebido}')

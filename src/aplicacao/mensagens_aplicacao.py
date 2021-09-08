@@ -119,12 +119,13 @@ def fazPedidoConvite(
         sUdp: socket,
         destIp: str,
         destPorta: int,
-        meuUsername: str):
+        meuUsername: str,
+        minhaPortaUdp: int):
     """Envia o convite de ligação para o endereco de destino"""
     tipoCabecalho = MensagensLigacao.CONVITE
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'
     # TODO - enviar as informações necessárias ao corpa da mensagem
-    corpo = f'\n{meuUsername}'
+    corpo = f'\n{meuUsername}\n{minhaPortaUdp}'
     mensagemCompleta = f'{cabecalho}{corpo}'
     mensagemCompletaBytes = f'{cabecalho}{corpo}'.encode('UTF8')
     TransmissaoUdp.enviaBytes(
