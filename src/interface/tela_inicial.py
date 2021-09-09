@@ -1,6 +1,8 @@
+from src.aplicacao.mecanismo_audio import MecanismoAudio
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 from typing import List, Type
+from socket import gaierror
 
 from PIL import Image, ImageTk
 from src.aplicacao.mensagens_aplicacao import MensagensAplicacao, MensagensLigacao
@@ -19,6 +21,7 @@ class ClienteInterfaceApp(tk.Tk):
         self._container = tk.Frame(self)
         self.client_socket = Cliente()
         self.agenteLigacao = ClienteServidorLigacao()
+        self.engineAudioChamada = MecanismoAudio(bufferGravacao=self.agenteLigacao.bufferAudio_Envio,bufferReproducao=self.agenteLigacao.bufferAudio_Recebido)
         self._log_conexao = []
         self._paginaAtual = None
 
@@ -51,6 +54,11 @@ class ClienteInterfaceApp(tk.Tk):
         fechar a aplição.
         """
         self.client_socket.realizaPedidoEncerramento(self.agenteLigacao.enderecoAtualServidorUdp[1])
+        with self.agenteLigacao.emChamada.lock:
+            if isinstance(self.agenteLigacao.emChamada.data, bool):
+                if self.agenteLigacao.emChamada.data:
+                    self.agenteLigacao.realizaEncerramento()
+        self.engineAudioChamada.close()
         self.quit()
 
     def mostraPagina(self, pagina: Type[tk.Frame]):
@@ -281,7 +289,11 @@ class PaginaConsulta(tk.Frame):
             self._aplicacao.escreveNologConexao(cabecalhoRecebido+'\n'+corpoRecebido)
             # NOTE - verifica e trata a resposta recebida
             if cabecalhoRecebido.startswith(MensagensAplicacao.CONSULTA_EXITO.value.cod):
-                pass
+                l1, _, l2 = corpoRecebido.partition(' ')
+                self._ipEntry.delete(0, tk.END)
+                self._portaEntry.delete(0, tk.END)
+                self._ipEntry.insert(tk.END, l1)
+                self._portaEntry.insert(tk.END, l2)
             elif cabecalhoRecebido.startswith(MensagensAplicacao.CONSULTA_FALHA.value.cod):
                 messagebox.showinfo(title='', message='Atualmente não há um usuário com o nome fornecido registrado no servidor.')
 
@@ -299,7 +311,7 @@ class PaginaConsulta(tk.Frame):
                 try:
                     # TODO - tenta enviar mensagem de convite
                     (enviado, (cabecalho, corpo)) = self._aplicacao.agenteLigacao.realizaConvite(ip, porta, self._aplicacao._ultimoNomeBuscado, meuNome)
-                except InvalidIpError:
+                except gaierror:
                     messagebox.showerror(
                             title="Não é possivel conectar!",
                             message='Ip inválido, Verifique o endereço digitado.')
@@ -319,21 +331,32 @@ class PaginaConsulta(tk.Frame):
         self._aplicacao.agenteLigacao.realizaEncerramento()
 
     def atualizaElementosPagina(self):
-        with self._aplicacao.agenteLigacao.emChamada.lock:
-            if isinstance(self._aplicacao.agenteLigacao.emChamada.data, bool):
-                if self._aplicacao.agenteLigacao.emChamada.data:
-                    self._botaoLigar.grid_remove()
-                    self._botaoEncerrar.grid()  # vai relembrar onde ele foi posto da ultima vez
-                else:
-                    self._botaoEncerrar.grid_remove()
-                    self._botaoLigar.grid()  # vai relembrar onde ele foi posto da ultima vez
-        with self._aplicacao.agenteLigacao.log.lock:
-            if isinstance(self._aplicacao.agenteLigacao.log.data, list):
-                for texto in self._aplicacao.agenteLigacao.log.data:
-                    self._aplicacao.escreveNologConexao(texto)
-                self._aplicacao.agenteLigacao.clearLog()
-        self.escreveLogConexaoTextoPercorrivel(self._aplicacao.logConexao)
-        self.apresentaChamadaRecebida()
+        if self._aplicacao.paginaAutal == PaginaConsulta:
+            with self._aplicacao.agenteLigacao.emChamada.lock:
+                if isinstance(self._aplicacao.agenteLigacao.emChamada.data, bool):
+                    if self._aplicacao.agenteLigacao.emChamada.data:
+                        # NOTE - altera botões se está em chamada
+                        self._botaoLigar.grid_remove()
+                        self._botaoEncerrar.grid()  # vai relembrar onde ele foi posto da ultima vez
+
+                        # NOTE - liga a engine de audio se não estou com ela ligada
+                        if not self._aplicacao.engineAudioChamada.executando:
+                            self._aplicacao.engineAudioChamada.executa()
+                    else:
+                        # NOTE - altera botões se está em chamada
+                        self._botaoEncerrar.grid_remove()
+                        self._botaoLigar.grid()  # vai relembrar onde ele foi posto da ultima vez
+
+                        # NOTE - desliga a engine de audio se estou com ela ligada
+                        if self._aplicacao.engineAudioChamada.executando:
+                            self._aplicacao.engineAudioChamada.paraExecucao()
+            with self._aplicacao.agenteLigacao.log.lock:
+                if isinstance(self._aplicacao.agenteLigacao.log.data, list):
+                    for texto in self._aplicacao.agenteLigacao.log.data:
+                        self._aplicacao.escreveNologConexao(texto)
+                    self._aplicacao.agenteLigacao.clearLog()
+            self.escreveLogConexaoTextoPercorrivel(self._aplicacao.logConexao)
+            self.apresentaChamadaRecebida()
 
     def escreveLogConexaoTextoPercorrivel(self, log: List[str]):
         """

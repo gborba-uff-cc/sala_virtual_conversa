@@ -1,5 +1,5 @@
 from enum import Enum
-from socket import socket
+from socket import socket, htons, ntohs
 from typing import NamedTuple, Tuple, Union
 
 from src.util.transmissao import Transmissao, TransmissaoUdp
@@ -172,6 +172,25 @@ def fazPedidoEncerrarLigacao(
     return mensagemCompleta
 
 
+# def enviaPacoteAudio(
+#         sUdp: socket,
+#         destIp: str,
+#         destPorta: int,
+#         bytesEnviar: bytes,
+#         nPacote: int):
+#     tipoCabecalho = MensagensLigacao.PACOTE_AUDIO
+#     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'.encode('UTF-8')
+#     corpo = f'\n{nPacote}\n'.encode('UTF-8') + bytesEnviar
+#     mensagemCompleta = f'{cabecalho.decode("UTF-8")}\n{sum(bytesEnviar)}'
+#     mensagemCompletaBytes = cabecalho + corpo
+#     TransmissaoUdp.enviaBytes(
+#         sUdp,
+#         destIp,
+#         destPorta,
+#         mensagemCompletaBytes)
+#     print(bytesEnviar)
+#     return mensagemCompleta
+
 def enviaPacoteAudio(
         sUdp: socket,
         destIp: str,
@@ -181,15 +200,15 @@ def enviaPacoteAudio(
     tipoCabecalho = MensagensLigacao.PACOTE_AUDIO
     cabecalho = f'{tipoCabecalho.value.cod} {tipoCabecalho.value.description}'.encode('UTF-8')
     corpo = f'\n{nPacote}\n'.encode('UTF-8') + bytesEnviar
-    mensagemCompleta = f'{cabecalho}\n<bytes>'
+    mensagemCompleta = f'{cabecalho.decode("UTF-8")}\n{sum(bytesEnviar)}'
     mensagemCompletaBytes = cabecalho + corpo
     TransmissaoUdp.enviaBytes(
         sUdp,
         destIp,
         destPorta,
         mensagemCompletaBytes)
+    # print('==>', bytesEnviar)
     return mensagemCompleta
-
 
 def recebeMensagemUdp(sUdp: socket) -> Tuple[str,int,str,Union[str, Tuple[int, bytes]]]:
     """
@@ -200,11 +219,12 @@ def recebeMensagemUdp(sUdp: socket) -> Tuple[str,int,str,Union[str, Tuple[int, b
     """
     endOrigem, portaOrigem, cabecalho, corpo = ('', 0, '', '')
     endOrigem, portaOrigem, msgBytes = TransmissaoUdp.recebeBytes(sUdp)
-    if msgBytes.startswith(MensagensLigacao.PACOTE_AUDIO.value.cod.encode('UTF-8')):
+    if msgBytes.startswith(MensagensLigacao.PACOTE_AUDIO.value.cod.encode('ASCII')):
         cabecalho, _, corpo = msgBytes.partition(b'\n')
         nPacote, _, audio = corpo.partition(b'\n')
         corpo = (int(nPacote.decode('UTF-8')), audio)
         cabecalho = cabecalho.decode('UTF-8')
+        # print('<==', audio)
     else:
         msgStr = msgBytes.decode('UTF-8')
         cabecalho, _, corpo = msgStr.partition('\n')

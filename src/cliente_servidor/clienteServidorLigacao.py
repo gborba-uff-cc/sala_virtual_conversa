@@ -74,10 +74,10 @@ class ClienteServidorLigacao():
                 daemon=True)
         self._threadServidor.start()
         # NOTE - deque é thread safe para append e pop nas duas pontas
-        self._audioBuffer_saida: Deque = Deque([], maxlen=50)
+        self._audioBuffer_envio: Deque = Deque([], maxlen=50)
         # NOTE - considerando que pacotes de audio não serão perdidos por não
         # irem para a rede
-        self._audioBuffer_entrada: Deque = Deque([], maxlen=50)
+        self._audioBuffer_recebido: Deque = Deque([], maxlen=50)
 
     @property
     def infoChamadaEstabelecida(self):
@@ -124,11 +124,11 @@ class ClienteServidorLigacao():
 
     @property
     def bufferAudio_Recebido(self) -> Deque:
-        return self._audioBuffer_entrada
+        return self._audioBuffer_recebido
 
     @property
     def bufferAudio_Envio(self) -> Deque:
-        return self._audioBuffer_saida
+        return self._audioBuffer_envio
 
     def realizaConvite(self, destIp: str, destPorta: int, destUsername: str, meuUsername: str) -> Tuple[str, Tuple[str, str]]:
         destIp = destIp if destIp else 'localhost'
@@ -139,7 +139,7 @@ class ClienteServidorLigacao():
         with self._emChamada.lock:
             if isinstance(self._emChamada.data, bool):
                 destIp = socket.gethostbyname(destIp)
-                print(f'{self._emChamada.data} or {(destIp, destPorta)} == {(self._endServidor)}')
+
                 # NOTE - ou se esta tentando ligar para si mesmo
                 if self._emChamada.data or (destIp, destPorta) == (self._endServidor):
                     cabecalho = f'{ma.MensagensLigacao.CONVITE_REJEITADO.value.cod} {ma.MensagensLigacao.CONVITE_REJEITADO.value.description}'
@@ -157,7 +157,7 @@ class ClienteServidorLigacao():
                         meuUsername,
                         self.enderecoAtualServidorUdp[1])
                 self._realizandoChamada.data = True
-                self._infoChamadaRealizada = InformacaoPar(destIp, destPorta, destUsername)
+                self._infoChamadaRealizada = InformacaoPar(destIp, destPorta, '')
 
         self._escreveNoLog(enviado=enviado, recebido='')
         return (enviado, (cabecalho, corpo))
@@ -204,19 +204,25 @@ class ClienteServidorLigacao():
         return (enviado, recebido)
 
 
-    def enviaPacoteAudio(self, nSeqAudio: int ,bytesAudio: bytes) -> Tuple[str, Tuple[str,str]]:
+    def _enviaPacoteAudio(self) -> Tuple[str, Tuple[str,str]]:
         enviado, recebido = ('', ('', ''))
-
+        pacoteAudio = b''
+        try:
+            pacoteAudio = self._audioBuffer_envio.popleft()
+        except IndexError:
+            # NOTE - não envia caso não tenha o que enviar
+            return (enviado, recebido)
         with self._sCliente.lock:
             if isinstance(self._sCliente.data, socket.socket):
                 enviado = ma.enviaPacoteAudio(
                         self._sCliente.data,
                         self._infoChamadaEstabelecida.ip,
                         self._infoChamadaEstabelecida.porta,
-                        bytesAudio,
-                        nSeqAudio)
+                        pacoteAudio,
+                        # b'abcdefghi '*200,
+                        0)
 
-        self._escreveNoLog(enviado=enviado, recebido='')
+        # self._escreveNoLog(enviado=enviado, recebido='')
         return (enviado, recebido)
 
     def fechaSockets(self):
@@ -264,6 +270,11 @@ class ClienteServidorLigacao():
                     finally:
                         self._sServidor.data.setblocking(socketBloqueante)
                     # endOrigem, portaOrigem, cabecalho, corpo = ma.recebeMensagemUdp(self._sServidor.data)
+        # NOTE - envia pacote de audio se estiver em chamada
+            with self._emChamada.lock:
+                if isinstance(self._emChamada.data, bool):
+                    if self._emChamada.data:
+                        self._enviaPacoteAudio()
 
         # ======================================================================
         # NOTE - recebeu convite de chamada
@@ -289,7 +300,6 @@ class ClienteServidorLigacao():
             elif cabecalho.startswith(ma.MensagensLigacao.CONVITE_ACEITO.value.cod):
                 with self._emChamada.lock, self._realizandoChamada.lock:
                     if isinstance(self._realizandoChamada.data, bool) and isinstance(self._emChamada.data, bool):
-                        print(f'{self._realizandoChamada.data} and {endOrigem} == {self._infoChamadaRealizada[0]}')
                         if self._realizandoChamada.data and endOrigem == self._infoChamadaRealizada[0]:
                             self._infoChamadaEstabelecida = self._infoChamadaRealizada
                             self._infoChamadaRealizada = InformacaoPar('',0,'')
@@ -320,11 +330,12 @@ class ClienteServidorLigacao():
         # NOTE - recebeu um pacote de audio
             elif cabecalho.startswith(ma.MensagensLigacao.PACOTE_AUDIO.value.cod):
                 with self._emChamada.lock:
-                    if self._emChamada.data and endOrigem == self._infoChamadaEstabelecida:
+                    if self._emChamada.data and endOrigem == self._infoChamadaEstabelecida.ip:
                         # NOTE - adiciona o pacote de audio no buffer
                         if self._emChamada.data:
-                            self._audioBuffer_entrada.append(corpo)
-                corpo = '<bytes>'
+                            self._audioBuffer_recebido.append(corpo[1])
+                            # pass
+                cabecalho, corpo = ('', '')
 
         # ======================================================================
         # NOTE - recebeu uma mensagem que nao existe
@@ -338,6 +349,8 @@ class ClienteServidorLigacao():
         with self._log.lock:
             if isinstance(self._log.data, list):
                 if enviado:
-                    self._log.data.append(f'[mod.lig.E] >>> {enviado}')
+                    # self._log.data.append(f'[mod.lig.E] >>>\n{enviado}')
+                    self._log.data.append(f'{enviado}')
                 if recebido:
-                    self._log.data.append(f'[mod.lig.R] >>> {recebido}')
+                    # self._log.data.append(f'[mod.lig.R] >>>\n{recebido}')
+                    self._log.data.append(f'{recebido}')

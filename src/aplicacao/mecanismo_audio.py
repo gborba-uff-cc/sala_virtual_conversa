@@ -5,6 +5,10 @@
 # LINK - https://realpython.com/python-deque/#sharing-data-between-threads
 
 
+# FIXME - para "ALSA lib pcm.c:8306:(snd_pcm_recover) underrun occurred" digite no terminal
+# NOTE  - echo 4096 | /usr/bin/tee /proc/asound/card0/pcm0p/sub0/prealloc
+# LINK  - https://www.reddit.com/r/ChipCommunity/comments/53aly4/alsa_lib_pcmc7843snd_pcm_recover_underrun_occurred/
+
 from typing import Deque
 import pyaudio
 import time
@@ -17,16 +21,16 @@ class MecanismoAudio():
             tamanhoAmostra: int = 1,
             nCanais: int = 1,
             txAmostragem: int = 44100,
-            bufferEntrada: Deque = Deque(maxlen=50),
-            bufferSaida: Deque = Deque(maxlen=50)) -> None:
+            bufferGravacao: Deque = Deque(maxlen=50),
+            bufferReproducao: Deque = Deque(maxlen=50)) -> None:
 
         self._WIDTH = tamanhoAmostra
         self._CHANNELS = nCanais
         self._RATE = txAmostragem
 
         self._PY_A = pyaudio.PyAudio()
-        self._BUFFER_FlUXO_ENTRADA = bufferEntrada
-        self._BUFFER_FlUXO_SAIDA = bufferSaida
+        self._BUFFER_FlUXO_ENTRADA = bufferGravacao
+        self._BUFFER_FlUXO_SAIDA = bufferReproducao
         self._fluxoEntrada = self._PY_A.open(
             format=self._PY_A.get_format_from_width(self._WIDTH),
             channels=self._CHANNELS,
@@ -44,19 +48,12 @@ class MecanismoAudio():
 
         self._executando = False
         self._tExecuta: threading.Thread = threading.Thread(target=self._executa)
+        # NOTE - manter por causa do .close()
         self._tExecuta.start()
 
-
-    def _geraPacoteAudio(self, in_data, frame_count, time_info, status):
-        self._BUFFER_FlUXO_ENTRADA.append(in_data)
-        return (in_data, pyaudio.paContinue)
-
-    def _consomePacoteAudio(self, in_data, frame_count, time_info, status):
-        try:
-            out_data = self._BUFFER_FlUXO_SAIDA.popleft()
-        except IndexError:
-            out_data = b'\x00'*frame_count
-        return (out_data, pyaudio.paContinue)
+    @property
+    def executando(self):
+        return self._executando
 
     def executa(self):
         """
@@ -70,18 +67,6 @@ class MecanismoAudio():
         if not self._tExecuta.is_alive():
             self._tExecuta = threading.Thread(target=self._executa)
             self._tExecuta.start()
-
-    def _executa(self):
-        self._fluxoEntrada.start_stream()
-        # NOTE - delay para inicio da reproducao
-        time.sleep(0.1)
-        self._fluxoSaida.start_stream()
-
-        while self._executando:
-            time.sleep(.5)
-
-        self._fluxoEntrada.stop_stream()
-        self._fluxoSaida.stop_stream()
 
     def paraExecucao(self):
         self._executando = False
@@ -98,11 +83,34 @@ class MecanismoAudio():
         self._tExecuta.join()
         self._PY_A.terminate()
 
+    def _executa(self):
+        self._fluxoEntrada.start_stream()
+        # NOTE - delay para inicio da reproducao
+        time.sleep(0.1)
+        self._fluxoSaida.start_stream()
+
+        while self._executando:
+            time.sleep(.5)
+
+        self._fluxoEntrada.stop_stream()
+        self._fluxoSaida.stop_stream()
+
+    def _geraPacoteAudio(self, in_data, frame_count, time_info, status):
+        self._BUFFER_FlUXO_ENTRADA.append(in_data)
+        return (in_data, pyaudio.paContinue)
+
+    def _consomePacoteAudio(self, in_data, frame_count, time_info, status):
+        try:
+            out_data = self._BUFFER_FlUXO_SAIDA.popleft()
+        except IndexError:
+            out_data = b'\x00'*frame_count
+        return (out_data, pyaudio.paContinue)
+
 # NOTE - para testar o uso
 if __name__ == '__main__':
 # ==============================================================================
     d = Deque()
-    audioEngine = MecanismoAudio(bufferEntrada=d,bufferSaida=d)
+    audioEngine = MecanismoAudio(bufferGravacao=d,bufferReproducao=d)
 
 # ==============================================================================
     audioEngine.executa()
