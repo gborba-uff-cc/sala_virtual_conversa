@@ -19,7 +19,15 @@ Trabalho da disciplina de 'Redes de Computadores 2'
         - [___Transmissao___](#___transmissao___)
         - [___Interface cliente___](#___interface-cliente___)
         - [___Cliente___](#___cliente___)
-    - [Atualizações futuras](#atualiza%C3%A7%C3%B5es-futuras)
+    - [Implementação da segunda parte do trabalho](#implementa%C3%A7%C3%A3o-da-segunda-parte-do-trabalho)
+        - [___Servidor___](#___servidor___)
+        - [___Cliente___](#___cliente___)
+        - [___Mecanismo de áudio___](#___mecanismo-de-%C3%A1udio___)
+        - [___Mensagens da aplicação___](#___mensagens-da-aplica%C3%A7%C3%A3o___)
+        - [___Cliente e Servidor de Ligacao___](#___cliente-e-servidor-de-ligacao___)
+        - [___Interface do cliente___](#___interface-do-cliente___)
+        - [___Mutex___](#___mutex___)
+        - [___Transmissão___](#___transmiss%C3%A3o___)
     - [Links](#links)
     - [Autores](#autores)
 
@@ -60,6 +68,7 @@ Para instalar esses pacotes digite no terminal:
 #### **Python3.8**
 
 - Pillow
+- PyAudio
 
 > Caso não queira instalar os requerimentos python desse projeto em todo o sistema, primeiramente crie e ative um ambiente virtual python, instale os requerimentos python e execute os scripts do projeto com o ambiente visual ativado.
 >
@@ -171,10 +180,44 @@ Ainda sobre os métodos do cliente, um deles faz o pedido de registro de um cert
 > Obs.: Esse módulo se encontra em `./src/cliente_servidor/`
 
 ---
+## Implementação da segunda parte do trabalho
 
-## Atualizações futuras
+Por ser final de semestre e estarmos com vários trabalhos para entregar então as coisas ficaram bem corridas, não tivemos muito tempo para focar e investir apenas nesse trabalho. Tentaremso listar ao máximo os acrécimos e mudanças, que foram os seguintes:
 
-- [ ] Permitir que usuários conectados façam ligações de voz
+Adição de uma dependencia ao código python (o pacote PyAudio) para que pudessemos trabalhar com as stream  de audio do sistema. E também mudanças e acréscimos no:
+
+### ___Servidor___
+
+No servidor de registro (que já tinhamos da primeira parte do trabalho) foi feita uma modificação para armazenar o número da porta UDP por onde o usuário espera receber as mensagens UDP referentes as ligações. Anteriormente o servidor armazenava a número da porta TCP por onde o usuário havia feito o pedido de registro.
+
+### ___Cliente___
+
+Foi feita a alteração para que o usuário envie o número de porta UDP que será atrelado ao registro desse usuário no servidor de registro. Para isso foi necessário alterar o método que faz o pedido de registro e o pedido encerramento do registro, ambos os métodos agora precisam enviar o número da porta UDP que o usuário está usando.
+
+### ___Mecanismo de áudio___
+
+O módulo do mecanismo de áudio fornce a classe 'MecanismoAudio' usa bindings para biblioteca PortAudio fornecidos pelo pacote PyAudio.
+O mecanismo de audio funciona através de callbacks para escrever armazenar e recuperar as amostras de audio do buffer do cliente e servidor de ligação. Ao criar colocar o mecanismo de audio para ser executado é 
+iniciada uma thread que fica monitorando se o usuário sinalizou que está em uma chamada para que seja iniciada a captura e reprodução do áudio (ou se foi sinalizada o encerramento da captura e reprodução).
+### ___Mensagens da aplicação___
+
+Mudança na criação da mensagem de registro e da mensagem de encerramento do registro que será enviada ao servidor de registro. Essa mudaça é para fornecer o suporte ao envio do número de porta UDP usada.
+
+### ___Cliente e Servidor de Ligacao___
+
+Foi escrito um único módulo com a classe ClienteServidorAplicação com a funcionalidade do servidor e cliente dessa parte de troca de mensagens UDP, sendo essas mensagens: um pedido de convite, uma resposta ao convite e pedido de encerramento; O cliente e servidor foram mantidos juntos por que existem algumas variáveis que são manipuladas por ambos os agentes, então optamos por deixar essas váriaveis menos esparsas para evitar um uso muito grande do tempo de desenvolvimento no ato de decidir onde colocar e como gerenciar essas informações (ainda sim essa classe foi a que demandou mais tempo para ser feita).
+
+### ___Interface do cliente___
+
+O campo de endereco a ser chamado (que já haviamos deixado preparado na primeira parte do trabalho) foi dividido em dois campos de entradas de dados, um para o endereco ip e o outro para o numero da porta UDP onde se encontra o servidor do módulo de ligacao/chamadas da aplicação do ususário de destino. Foi adicionada um atalho para que, ao realizar uma busca no servidor de registro, e consulta ser bem sucedida, as informações recuperadas sejam usadas para preencher os campos de entrada para o endereço e número de porta que serão usados para fazer uma chamada.
+Na interface também foi adicionado um objeto do tipo mecanismo de audio responsável pela captura e reprodução do áudio da ligação.
+
+### ___Mutex___
+
+O objeto que realizava o lock do dado do mutex precisou ser alterado de um lock para um lock 'reentrante', isso é um lock que pode ser adquirido várias vezes pela mesma thread. Essa alteração foi necessária por causa da interface de usuário do cliente, exitem momentos locais onde é necessária a consulta de um valor do mutex e executar um método que também utiliza o mesmo dado e que tambem precisa realizar o lock. (Obs. pela nossa falta de tempo, não tentamos porcurar uma solução alternativa, ficamos com a solução que apareceu primeiro)
+### ___Transmissão___
+
+No módulo de transmissão foi adicionada uma classe responsável pela transmissão e recepção de dados através de um socket UDP. A transmissão não implementa nenhum serviço para além do que o socket UDP já nos fornece (novamente pela falta de tempo e também por levar em consideração que a execução da aplicação se dará apenas no localhost).
 
 ## Links
 
