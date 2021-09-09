@@ -15,28 +15,8 @@ class Mutex():
 
     @property
     def data(self):
-        # """
-        # data só será retornado se o lock tiver sido obtido
-        # """
-
-        # # return self._data if self.lock.locked() else None
-
-        # if self.lock.locked():
-        #     return self._data
-        # else:
-        #     print('Tentativa de acesso ao mutex sem o devido acquire')
-
         return self._data
 
     @data.setter
     def data(self, data):
-        # """
-        # data só será modificado se o lock tiver sido obtido.
-        # """
-
-        # if self._lock.locked():
-        #     self._data = data
-        # else:
-        #     print('Tentativa de acesso ao mutex sem o devido acquire')
-
         self._data = data

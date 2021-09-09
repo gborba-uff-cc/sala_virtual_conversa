@@ -1,4 +1,3 @@
-
 # NOTE - Inspirado em:
 # LINK - https://people.csail.mit.edu/hubert/pyaudio/#sources
 # LINK - https://people.csail.mit.edu/hubert/pyaudio/docs/
