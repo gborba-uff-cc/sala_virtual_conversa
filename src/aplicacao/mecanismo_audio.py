@@ -4,7 +4,7 @@
 # LINK - https://realpython.com/python-deque/#sharing-data-between-threads
 
 
-# FIXME - para "ALSA lib pcm.c:8306:(snd_pcm_recover) underrun occurred" digite no terminal
+# FIXME - possível correção para: "ALSA lib pcm.c:8306:(snd_pcm_recover) underrun occurred", digite no terminal
 # NOTE  - echo 4096 | /usr/bin/tee /proc/asound/card0/pcm0p/sub0/prealloc
 # LINK  - https://www.reddit.com/r/ChipCommunity/comments/53aly4/alsa_lib_pcmc7843snd_pcm_recover_underrun_occurred/
 
