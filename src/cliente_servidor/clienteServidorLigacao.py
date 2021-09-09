@@ -273,10 +273,14 @@ class ClienteServidorLigacao():
                                 isinstance(self._recebendoChamada.data, bool):
                             # NOTE - recusa a nova chamada se já estou em chamada, ou
                             # se estou no processo de aceitar a chamada de outro usuario
-                            if self._emChamada.data or (
-                                    self._infoChamadaRecebida != InformacaoPar('',0,'') and
-                                    self._infoChamadaRecebida != (endOrigem, portaOrigem)):
-                                ma.fazRespostaConvite(self._sCliente.data, endOrigem, portaOrigem, False)
+                            if self._emChamada.data:
+                                if isinstance(corpo, str):
+                                    _, _, porta = corpo.partition('\n')
+                                    enviado = ma.fazRespostaConvite(self._sCliente.data, endOrigem, int(porta), False)
+                                    self._escreveNoLog('', f'{cabecalho}{chr(10) if corpo else ""}{corpo}')
+                                    # para não reimprimir no fim do loop
+                                    cabecalho, corpo = ('', '')
+                                    self._escreveNoLog(enviado=enviado, recebido='')
                             else:
                                 if not self._recebendoChamada.data and isinstance(corpo, str):
                                     self._recebendoChamada.data = True
